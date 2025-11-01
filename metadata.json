@@ -1,0 +1,5 @@
+{
+  "name": "Bengali Spell Check for Word",
+  "description": "A UI simulation of a Microsoft Word add-on designed for checking Bengali spelling and grammar. This application showcases a modern, clean, and professional interface mimicking Office 365 and Grammarly's integration, with features like error highlighting, suggestion pop-ups, a detailed add-on pane, and a settings panel.",
+  "requestFramePermissions": []
+}
