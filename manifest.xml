@@ -9,8 +9,8 @@
   <DisplayName DefaultValue="Bengali Spell Checker" />
   <Description DefaultValue="AI-powered Bengali spell check add-in for Microsoft Word." />
 
-  <IconUrl DefaultValue="https://youngsunson.github.io/bengaliaddin/Assets/icons/icon-128.png"/>
-  <SupportUrl DefaultValue="https://github.com/youngsunson/bengaliaddin"/>
+<SourceLocation DefaultValue="https://youngsunson.github.io/bengaliaddin/index.html"/>
+<IconUrl DefaultValue="https://youngsunson.github.io/bengaliaddin/Assets/icons/icon-128.png"/>
 
   <Hosts>
     <Host Name="Document"/>
