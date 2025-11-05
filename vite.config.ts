@@ -1,24 +1,14 @@
-import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
-  return {
-    base: '/bengaliaddin/',
-    server: {
-      port: 3000,
-      host: '0.0.0.0',
-    },
-    plugins: [react()],
-    define: {
-      'process.env': env,
-    },
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
-    },
-  };
-});
+export async function generateBengaliCorrection(text: string): Promise<string> {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const result = await model.generateContent(text);
+    return result.response.text();
+  } catch (err) {
+    console.error("Error calling Gemini API:", err);
+    return "Error contacting AI service.";
+  }
+}
