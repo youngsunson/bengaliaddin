@@ -2,21 +2,25 @@
 <OfficeApp xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:type="TaskPaneApp">
+
   <Id>8f67f3cb-2c01-4bc3-bengali-spell-checker</Id>
   <Version>1.0.0.0</Version>
   <ProviderName>Himadri Biswas</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
+
   <DisplayName DefaultValue="Bengali Spell Checker" />
   <Description DefaultValue="AI-powered Bengali spell check add-in for Microsoft Word." />
 
-<SourceLocation DefaultValue="https://youngsunson.github.io/bengaliaddin/index.html"/>
-<IconUrl DefaultValue="https://youngsunson.github.io/bengaliaddin/Assets/icons/icon-128.png"/>
+  <!-- ✅ Correct case-sensitive icon path -->
+  <IconUrl DefaultValue="https://youngsunson.github.io/bengaliaddin/Assets/icons/icon-128.png"/>
 
   <Hosts>
-    <Host Name="Document"/>
+    <!-- ✅ Correct host -->
+    <Host Name="Word"/>
   </Hosts>
 
   <DefaultSettings>
+    <!-- ✅ Correct UI Page (Your app UI is index.html) -->
     <SourceLocation DefaultValue="https://youngsunson.github.io/bengaliaddin/index.html"/>
   </DefaultSettings>
 
