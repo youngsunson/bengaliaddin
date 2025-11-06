@@ -1,7 +1,8 @@
-
+// components/AddonPane.tsx
 import React, { useState } from 'react';
 import type { SpellError, AIResponse } from '../types';
 import { ErrorCard } from './ErrorCard';
+import { learningSystem } from '../learning'; // Add this import
 
 interface AddonPaneProps {
   errors: SpellError[];
@@ -30,7 +31,6 @@ const EyeOffIcon: React.FC<{className?: string}> = ({className}) => (
 const SpellCheckIcon: React.FC<{className?: string}> = ({className}) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m6 16 6-12 6 12"/><path d="M8 12h8"/><path d="m16 20 2 2 4-4"/></svg>
 );
-
 
 const CollapsibleSection: React.FC<{title: string; count: number; icon: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean}> = ({ title, count, icon, children, defaultOpen = false }) => (
     <details className="bg-white dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700" open={defaultOpen}>
@@ -98,6 +98,10 @@ const IgnoredWordsManager: React.FC<{words: string[], onChange: (updater: (prev:
 };
 
 export const AddonPane: React.FC<AddonPaneProps> = ({ errors, onAcceptSuggestion, onDismissError, onCardHover, isChecking, analysisResult, onRunAnalysis, ignoredWords, onIgnoredWordsChange }) => {
+    // Get learning statistics
+    const storedCorrectionsCount = learningSystem.userPreferences.storedCorrections.length;
+    const userAcceptedWordsCount = learningSystem.userPreferences.userAcceptedWords.length;
+    
     return (
         <div className="h-full flex flex-col">
             <header className="p-4 border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
@@ -171,6 +175,31 @@ export const AddonPane: React.FC<AddonPaneProps> = ({ errors, onAcceptSuggestion
                         </CollapsibleSection>
                     </>
                 )}
+
+                {/* NEW: Learning System Section */}
+                <CollapsibleSection title="Learning System" count={storedCorrectionsCount + userAcceptedWordsCount} icon={<LightbulbIcon className="w-5 h-5"/>}>
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="bg-blue-50 dark:bg-blue-900/30 p-2 rounded">
+                                <p className="text-blue-800 dark:text-blue-200">Stored Corrections</p>
+                                <p className="font-semibold text-blue-900 dark:text-blue-100">{storedCorrectionsCount}</p>
+                            </div>
+                            <div className="bg-green-50 dark:bg-green-900/30 p-2 rounded">
+                                <p className="text-green-800 dark:text-green-200">Accepted Words</p>
+                                <p className="font-semibold text-green-900 dark:text-green-100">{userAcceptedWordsCount}</p>
+                            </div>
+                        </div>
+                        
+                        <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                            <button 
+                                onClick={() => learningSystem.saveToStorage()}
+                                className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm"
+                            >
+                                Save Learning Data
+                            </button>
+                        </div>
+                    </div>
+                </CollapsibleSection>
 
                 <CollapsibleSection title="Ignored Words" count={ignoredWords.length} icon={<EyeOffIcon className="w-5 h-5"/>}>
                    <IgnoredWordsManager words={ignoredWords} onChange={onIgnoredWordsChange} />
