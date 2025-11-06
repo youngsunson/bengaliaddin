@@ -1,4 +1,4 @@
-
+// WordDocument.tsx
 import React, { useMemo } from 'react';
 import type { SpellError, SuggestionPopupState } from '../types';
 import { SuggestionPopup } from './SuggestionPopup';
@@ -29,53 +29,46 @@ export const WordDocument: React.FC<WordDocumentProps> = ({
     if (!errors.length) {
       return [text];
     }
-    const errorMap = new Map<string, SpellError[]>();
-    errors.forEach(error => {
-      if (!errorMap.has(error.incorrectWord)) {
-        errorMap.set(error.incorrectWord, []);
+    
+    // Sort errors by position to process them in order
+    const sortedErrors = [...errors].sort((a, b) => a.position.start - b.position.start);
+    
+    let lastIndex = 0;
+    const result: React.ReactNode[] = [];
+    
+    sortedErrors.forEach((error, index) => {
+      // Add text before this error
+      if (error.position.start > lastIndex) {
+        result.push(text.substring(lastIndex, error.position.start));
       }
-      errorMap.get(error.incorrectWord)!.push(error);
+      
+      // Add the error word with highlighting
+      result.push(
+        <span
+          key={`${error.id}-${index}`}
+          className={`font-bengali underline decoration-red-500 decoration-wavy decoration-2 underline-offset-2 cursor-pointer transition-colors duration-200 ${activeErrorId === error.id ? 'bg-red-100 dark:bg-red-500/20' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            const rect = e.currentTarget.getBoundingClientRect();
+            onWordClick({
+              error,
+              position: { top: rect.top - 10, left: rect.left },
+            });
+          }}
+        >
+          {error.incorrectWord}
+        </span>
+      );
+      
+      lastIndex = error.position.end;
     });
     
-    const errorWords = errors.map(e => e.incorrectWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    const uniqueErrorWords = [...new Set(errorWords)];
-    if (uniqueErrorWords.length === 0) return [text];
+    // Add remaining text after the last error
+    if (lastIndex < text.length) {
+      result.push(text.substring(lastIndex));
+    }
     
-    const errorWordsRegex = new RegExp(`(${uniqueErrorWords.join('|')})`, 'g');
-    
-    const parts = text.split(errorWordsRegex).filter(Boolean);
-
-    let errorInstanceCounters: {[key: string]: number} = {};
-
-    return parts.map((part, index) => {
-      const errorInstances = errorMap.get(part);
-      if (errorInstances) {
-        const instanceIndex = errorInstanceCounters[part] || 0;
-        const error = errorInstances.find(e => e.id.endsWith(`-${(text.indexOf(part, (errorInstanceCounters[part + '_lastIndex'] || -1) + 1))}`));
-        errorInstanceCounters[part] = instanceIndex + 1;
-        errorInstanceCounters[part + '_lastIndex'] = text.indexOf(part, (errorInstanceCounters[part + '_lastIndex'] || -1) + 1);
-
-        if (error) {
-            return (
-              <span
-                key={`${error.id}-${index}`}
-                className={`font-bengali underline decoration-red-500 decoration-wavy decoration-2 underline-offset-2 cursor-pointer transition-colors duration-200 ${activeErrorId === error.id ? 'bg-red-100 dark:bg-red-500/20' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  onWordClick({
-                    error,
-                    position: { top: rect.top - 10, left: rect.left },
-                  });
-                }}
-              >
-                {part}
-              </span>
-            );
-        }
-      }
-      return part;
-    });
+    return result;
   }, [text, errors, onWordClick, activeErrorId]);
 
   const commonStyles = "text-lg leading-relaxed font-bengali whitespace-pre-wrap bg-transparent border-none outline-none resize-none overflow-y-auto p-0 m-0";
