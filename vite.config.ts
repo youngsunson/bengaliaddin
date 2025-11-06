@@ -1,23 +1,19 @@
-import path from "path";
-import { defineConfig, loadEnv } from "vite";
-import react from "@vitejs/plugin-react";
+import { GoogleGenerativeAI } from "@google/genai";
 
-export default defineConfig(({ mode }) => {
-  // load .env, .env.development, etc
-  const env = loadEnv(mode, process.cwd(), "");
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-  return {
-    base: "/bengaliaddin/", // REQUIRED for GitHub Pages deployment
-    server: {
-      port: 3000,
-      host: "0.0.0.0",
-    },
-    plugins: [react()],
-    resolve: {
-      alias: {
-        "@": path.resolve(__dirname, "."),
-      },
-    },
-    // No runtime API client code here — keep config only
-  };
-});
+const ai = new GoogleGenerativeAI(apiKey);
+
+// choose fast + low-cost model that works
+const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+// your text input (document contents)
+const prompt = `${documentText}`;
+
+const result = await model.generateContent(prompt);
+
+// standardized safe text extraction
+const rawText = await result.response.text();
+
+// parse because your system expects JSON output
+const resultJson = JSON.parse(rawText);
