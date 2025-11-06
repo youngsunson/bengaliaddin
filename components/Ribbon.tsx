@@ -1,4 +1,4 @@
-
+// Ribbon.tsx
 import React from 'react';
 
 interface RibbonProps {
