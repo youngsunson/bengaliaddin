@@ -5,7 +5,7 @@ const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 const ai = new GoogleGenerativeAI(apiKey);
 
 // choose fast + low-cost model that works
-const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // your text input (document contents)
 const prompt = `${documentText}`;
