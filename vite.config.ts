@@ -1,17 +1,23 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import path from "path";
+import { defineConfig, loadEnv } from "vite";
+import react from "@vitejs/plugin-react";
 
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+export default defineConfig(({ mode }) => {
+  // load .env, .env.development, etc
+  const env = loadEnv(mode, process.cwd(), "");
 
-const model = genAI.getGenerativeModel({
-  model: "gemini-1.5-flash"
+  return {
+    base: "/bengaliaddin/", // REQUIRED for GitHub Pages deployment
+    server: {
+      port: 3000,
+      host: "0.0.0.0",
+    },
+    plugins: [react()],
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "."),
+      },
+    },
+    // No runtime API client code here — keep config only
+  };
 });
-
-const result = await model.generateContent(l);
-const textResponse = result.response.text();
-const Me = JSON.parse(textResponse);
-
-// Run your error extraction function
-const tt = Fu(l, Me.spelling_corrections);
-
-s(tt);       // Set errors
-z(Me);       // Set analysis result
