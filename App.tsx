@@ -173,18 +173,31 @@ const App: React.FC = () => {
     setAnalysisResult(null);
     setPopup(null);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `${documentText}`,
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          responseMimeType: "application/json",
-          responseSchema: RESPONSE_SCHEMA
-        }
-      });
-      
-      const resultJson = JSON.parse(response.text) as AIResponse;
+// Use the browser-exposed VITE_ env variable
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+
+// pick fast model per your preference
+const response = await ai.models.generateContent({
+  model: "gemini-1.5-flash", // you selected option A (fast)
+  contents: `${documentText}`,
+  config: {
+    systemInstruction: SYSTEM_INSTRUCTION,
+    responseMimeType: "application/json",
+    responseSchema: RESPONSE_SCHEMA,
+  },
+});
+
+// the @google/genai SDK may return a .text or .text() depending on version.
+// handle both safely:
+let rawText: string;
+if (typeof response.text === "function") {
+  rawText = await (response.text() as Promise<string>);
+} else {
+  rawText = (response.text as unknown as string) ?? JSON.stringify(response);
+}
+
+const resultJson = JSON.parse(rawText) as AIResp;
+
       const generatedErrors = generateErrorsFromAI(documentText, resultJson.spelling_corrections);
       setErrors(generatedErrors);
       setAnalysisResult(resultJson);
