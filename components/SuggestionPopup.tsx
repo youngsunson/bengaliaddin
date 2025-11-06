@@ -1,7 +1,7 @@
 // SuggestionPopup.tsx
 import React from 'react';
 import type { SuggestionPopupState } from '../types';
-import { learningSystem } from './learning';
+import { learningSystem } from '../learning';
 
 interface SuggestionPopupProps {
   state: SuggestionPopupState;
