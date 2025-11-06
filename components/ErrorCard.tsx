@@ -1,7 +1,7 @@
 // ErrorCard.tsx
 import React from 'react';
 import type { SpellError } from '../types';
-import { learningSystem } from './learning';
+import { learningSystem } from '../learning';
 
 interface ErrorCardProps {
   error: SpellError;
