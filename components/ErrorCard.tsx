@@ -1,6 +1,7 @@
-
+// ErrorCard.tsx
 import React from 'react';
 import type { SpellError } from '../types';
+import { learningSystem } from './learning';
 
 interface ErrorCardProps {
   error: SpellError;
@@ -18,6 +19,16 @@ const XIcon: React.FC<{className?: string}> = ({className}) => (
 );
 
 export const ErrorCard: React.FC<ErrorCardProps> = ({ error, onAcceptSuggestion, onDismissError, onHover }) => {
+  const handleAccept = (suggestion: string) => {
+    learningSystem.learnFromCorrection(error, 'accept');
+    onAcceptSuggestion(error.id, suggestion);
+  };
+
+  const handleDismiss = () => {
+    learningSystem.learnFromCorrection(error, 'ignore');
+    onDismissError(error.id);
+  };
+
   return (
     <div 
         className="bg-white dark:bg-gray-700 p-4 rounded-lg border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-500 transition-shadow duration-200"
@@ -25,24 +36,33 @@ export const ErrorCard: React.FC<ErrorCardProps> = ({ error, onAcceptSuggestion,
         onMouseLeave={() => onHover(null)}
     >
       <div className="flex items-center justify-between mb-3">
-        <p className="font-bengali text-red-600 dark:text-red-400 line-through">{error.incorrectWord}</p>
-        <button onClick={() => onDismissError(error.id)} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400">
+        <div>
+          <p className="font-bengali text-red-600 dark:text-red-400 line-through text-lg font-semibold">{error.incorrectWord}</p>
+          {error.reason && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 italic">কারণ: {error.reason}</p>
+          )}
+        </div>
+        <button onClick={handleDismiss} className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400">
             <XIcon className="w-5 h-5"/>
         </button>
       </div>
-      <p className="text-xs text-gray-500 dark:text-gray-400 italic mb-3">"{error.context}"</p>
+      <p className="text-xs text-gray-500 dark:text-gray-400 italic mb-3">"…{error.context}…"</p>
       
       <div className="space-y-2">
         {error.suggestions.map(suggestion => (
           <button 
             key={suggestion} 
-            onClick={() => onAcceptSuggestion(error.id, suggestion)}
+            onClick={() => handleAccept(suggestion)}
             className="w-full text-left px-3 py-2 rounded-md bg-gray-50 dark:bg-gray-600/50 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 transition-colors duration-150 flex items-center justify-between group"
           >
             <span className="font-bengali font-semibold text-blue-600 dark:text-blue-300">{suggestion}</span>
             <CheckIcon className="w-5 h-5 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
           </button>
         ))}
+      </div>
+      
+      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        বিশ্বাস: {(error.confidence * 100).toFixed(0)}%
       </div>
     </div>
   );
