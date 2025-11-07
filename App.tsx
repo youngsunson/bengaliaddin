@@ -239,52 +239,6 @@ const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError
   return errors;
 };
 
-// NEW: Enhanced function to specifically detect common Bengali misspellings
-const detectCommonMisspellings = (text: string): SpellError[] => {
-  const errors: SpellError[] = [];
-  
-  // Define common Bengali misspellings and their corrections
-  const commonMisspellings: { word: string; suggestion: string; reason: string }[] = [
-    { word: 'সম্বব', suggestion: 'সম্ভব', reason: 'Common misspelling' },
-    { word: 'ছারপত্র', suggestion: 'ছাড়পত্র', reason: 'Common misspelling' },
-    { word: 'চাকুরিজিবি', suggestion: 'চাকরিজীবী', reason: 'Common misspelling' },
-    { word: 'চট্রগ্রামে', suggestion: 'চট্টগ্রামে', reason: 'Common misspelling' },
-    { word: 'সম্ভব', suggestion: 'সম্ভব', reason: 'Correct spelling' }, // This is actually correct, but included for testing
-  ];
-  
-  // Check for each common misspelling
-  commonMisspellings.forEach(({ word, suggestion, reason }) => {
-    const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\b${escapedWord}\\b`, 'g');
-    let match;
-    
-    while ((match = regex.exec(text)) !== null) {
-      const id = `common-${word}-${match.index}`;
-      
-      // Check if this error already exists (avoid duplicates)
-      if (!errors.some(e => e.id === id)) {
-        const error: SpellError = {
-          id,
-          incorrectWord: word,
-          suggestions: [suggestion],
-          context: getContext(text, match.index, word.length),
-          position: { start: match.index, end: match.index + word.length },
-          errorType: 'spelling',
-          confidence: 0.9
-        };
-        
-        // Enhance with learning system
-        const enhancedSuggestions = learningSystem.getEnhancedSuggestions(word, [suggestion]);
-        error.suggestions = enhancedSuggestions;
-        
-        errors.push(error);
-      }
-    }
-  });
-  
-  return errors;
-};
-
 interface HistoryState {
   documentText: string;
   ignoredWords: string[];
@@ -389,13 +343,7 @@ const App: React.FC = () => {
       // If AI didn't find spelling errors, use local spell check as fallback
       let finalErrors = generatedErrors;
       if (generatedErrors.length === 0) {
-        // Try detecting common misspellings first
-        const commonErrors = detectCommonMisspellings(documentText);
-        if (commonErrors.length > 0) {
-          finalErrors = commonErrors;
-        } else {
-          finalErrors = performSpellCheck(documentText, spellCheckOptions);
-        }
+        finalErrors = performSpellCheck(documentText, spellCheckOptions);
       }
       
       setErrors(finalErrors);
