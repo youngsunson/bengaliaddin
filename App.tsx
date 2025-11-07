@@ -307,11 +307,21 @@ const App: React.FC = () => {
       // Use the browser-exposed VITE_ env variable
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
+      // Create a more detailed prompt to ensure spelling errors are detected
+      const detailedPrompt = `
+      Please analyze this Bengali document for spelling errors, grammar issues, and formatting problems.
+      The document is: "${documentText}"
+      
+      Your task is to identify ALL misspelled Bengali words and provide corrections.
+      Pay special attention to common Bengali misspellings like "সম্বব" (should be "সম্ভব"), "ছারপত্র" (should be "ছাড়পত্র"), etc.
+      Return your response in the exact JSON format specified in the system instruction.
+      `;
+
       // the @google/genai SDK may return a .text or .text() depending on version.
       // handle both safely:
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash", // you selected option A (fast)
-        contents: [{ text: documentText }], // Changed to proper format
+        contents: [{ text: detailedPrompt }],
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: "application/json",
