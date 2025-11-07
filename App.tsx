@@ -102,15 +102,12 @@ const RESPONSE_SCHEMA = {
     required: ['spelling_corrections', 'missing_elements', 'formatting_suggestions', 'general_feedback']
 };
 
-// Enhanced error generation with precise positions - FIXED
+// Enhanced error generation with precise positions
 const generateErrorsFromAI = (text: string, corrections: AIResponse['spelling_corrections']): SpellError[] => {
   const foundErrors: SpellError[] = [];
   if (!corrections || corrections.length === 0) {
-    console.log("No corrections from AI");
     return [];
   }
-  
-  console.log("AI Corrections received:", corrections); // Debug log
   
   // Store AI corrections in learning system
   corrections.forEach(({ word, suggestion, confidence = 0.8, reason = "" }) => {
@@ -147,13 +144,10 @@ const generateErrorsFromAI = (text: string, corrections: AIResponse['spelling_co
         error.suggestions = enhancedSuggestions;
         
         foundErrors.push(error);
-        
-        console.log(`Found error: ${word} at position ${match.index}`); // Debug log
       }
     }
   });
   
-  console.log(`Generated ${foundErrors.length} errors from AI corrections`); // Debug log
   return foundErrors;
 };
 
@@ -340,12 +334,8 @@ const App: React.FC = () => {
         rawText = (response.text as unknown as string) ?? JSON.stringify(response);
       }
 
-      console.log("Raw AI response:", rawText); // Debug log
-      
       const resultJson = JSON.parse(rawText) as AIResponse;
       setAnalysisResult(resultJson);
-
-      console.log("Parsed AI result:", resultJson); // Debug log
 
       // Generate errors from AI response
       const generatedErrors = generateErrorsFromAI(documentText, resultJson.spelling_corrections);
@@ -353,7 +343,6 @@ const App: React.FC = () => {
       // If AI didn't find spelling errors, use local spell check as fallback
       let finalErrors = generatedErrors;
       if (generatedErrors.length === 0) {
-        console.log("AI found no spelling errors, using local spell check");
         finalErrors = performSpellCheck(documentText, spellCheckOptions);
       }
       
@@ -373,7 +362,7 @@ const App: React.FC = () => {
     setHistory(prev => [...prev, { documentText, ignoredWords }]);
     setDocumentText(newText);
     
-    // Always run local spell check on text change
+    // Always run local spell check on text change to catch known misspellings immediately
     const localErrors = performSpellCheck(newText, spellCheckOptions);
     setErrors(localErrors);
 
