@@ -106,8 +106,11 @@ const RESPONSE_SCHEMA = {
 const generateErrorsFromAI = (text: string, corrections: AIResponse['spelling_corrections']): SpellError[] => {
   const foundErrors: SpellError[] = [];
   if (!corrections || corrections.length === 0) {
+    console.log("AI returned no spelling corrections");
     return [];
   }
+  
+  console.log("AI returned spelling corrections:", corrections); // Debug log
   
   // Store AI corrections in learning system
   corrections.forEach(({ word, suggestion, confidence = 0.8, reason = "" }) => {
@@ -148,6 +151,7 @@ const generateErrorsFromAI = (text: string, corrections: AIResponse['spelling_co
     }
   });
   
+  console.log(`Generated ${foundErrors.length} errors from AI corrections`); // Debug log
   return foundErrors;
 };
 
@@ -294,7 +298,7 @@ const App: React.FC = () => {
 
   const handleRunAnalysis = useCallback(async () => {
     setIsChecking(true);
-    setErrors([]);
+    setErrors([]); // Clear existing errors
     setAnalysisResult(null);
     setPopup(null);
     try {
@@ -334,19 +338,24 @@ const App: React.FC = () => {
         rawText = (response.text as unknown as string) ?? JSON.stringify(response);
       }
 
+      console.log("Raw AI response:", rawText); // Debug log
+      
       const resultJson = JSON.parse(rawText) as AIResponse;
       setAnalysisResult(resultJson);
 
-      // Generate errors from AI response
+      // Generate errors from AI response - THIS IS THE KEY LINE
       const generatedErrors = generateErrorsFromAI(documentText, resultJson.spelling_corrections);
       
-      // If AI didn't find spelling errors, use local spell check as fallback
+      console.log("Generated errors from AI:", generatedErrors); // Debug log
+      
+      // Set errors to what the AI returned (or local fallback if none)
       let finalErrors = generatedErrors;
       if (generatedErrors.length === 0) {
         finalErrors = performSpellCheck(documentText, spellCheckOptions);
       }
       
       setErrors(finalErrors);
+      console.log("Set final errors:", finalErrors); // Debug log
 
     } catch (error) {
       console.error("Error calling Gemini API:", error);
