@@ -115,41 +115,38 @@ const generateErrorsFromAI = (text: string, corrections: AIResponse['spelling_co
   // Sort by confidence to prioritize better suggestions
   const sortedCorrections = [...corrections].sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
   
-  let processedText = text;
+  // Create a map to track which words have been processed to avoid duplicates
+  const processedWords = new Set<string>();
   
   sortedCorrections.forEach(({ word, suggestion, confidence = 0.8, reason = "" }) => {
-    // Use word boundaries to avoid partial matches
+    if (processedWords.has(word)) return; // Skip if already processed
+    
+    // Use word boundaries to find all occurrences of the word
     const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`\\b${escapedWord}\\b`, 'g');
     let match;
     
-    while ((match = regex.exec(processedText)) !== null) {
+    while ((match = regex.exec(text)) !== null) {
       const id = `err-${word}-${match.index}`;
       
-      // Check if this error already exists (avoid duplicates)
-      if (!foundErrors.some(e => e.id === id)) {
-        const error: SpellError = {
-          id,
-          incorrectWord: word,
-          suggestions: [suggestion],
-          context: getContext(text, match.index, word.length),
-          position: { start: match.index, end: match.index + word.length },
-          errorType: 'spelling',
-          confidence
-        };
-        
-        // Enhance with learning system
-        const enhancedSuggestions = learningSystem.getEnhancedSuggestions(word, [suggestion]);
-        error.suggestions = enhancedSuggestions;
-        
-        foundErrors.push(error);
-        
-        // Replace in processed text to avoid re-matching same position
-        processedText = processedText.substring(0, match.index) + 
-                       ' '.repeat(word.length) + 
-                       processedText.substring(match.index + word.length);
-      }
+      const error: SpellError = {
+        id,
+        incorrectWord: word,
+        suggestions: [suggestion],
+        context: getContext(text, match.index, word.length),
+        position: { start: match.index, end: match.index + word.length },
+        errorType: 'spelling',
+        confidence
+      };
+      
+      // Enhance with learning system
+      const enhancedSuggestions = learningSystem.getEnhancedSuggestions(word, [suggestion]);
+      error.suggestions = enhancedSuggestions;
+      
+      foundErrors.push(error);
     }
+    
+    processedWords.add(word);
   });
   
   return foundErrors;
@@ -191,14 +188,19 @@ const getPhoneticSuggestions = (word: string): string[] => {
   return [...new Set(suggestions)]; // Remove duplicates
 };
 
-// NEW: Enhanced spell checking with stored corrections as fallback
+// Enhanced spell checking with stored corrections as fallback
 const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError[] => {
   const errors: SpellError[] = [];
   
   // Basic word extraction (you can enhance this with proper Bengali tokenization)
   const words = text.match(/\b[\u0980-\u09FF]+\b/g) || [];
   
-  words.forEach((word, index) => {
+  // Track processed words to avoid duplicates
+  const processedWords = new Set<string>();
+  
+  words.forEach((word) => {
+    if (processedWords.has(word)) return; // Skip if already processed
+    
     // Check against stored corrections first
     const storedCorrection = learningSystem.getStoredCorrection(word);
     if (storedCorrection) {
@@ -206,7 +208,7 @@ const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError
       const confidence = learningSystem.userPreferences.storedCorrections.find(c => c.incorrect === word)?.confidence || 0.6;
       
       errors.push({
-        id: `stored-${word}-${index}`,
+        id: `stored-${word}-${Math.random()}`, // Use random to ensure unique ID
         incorrectWord: word,
         suggestions: [storedCorrection],
         context,
@@ -214,6 +216,7 @@ const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError
         errorType: 'spelling',
         confidence
       });
+      processedWords.add(word);
     } else {
       // Check against known misspellings
       const phoneticSuggestions = getPhoneticSuggestions(word);
@@ -221,7 +224,7 @@ const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError
       if (phoneticSuggestions.length > 0) {
         const context = getContext(text, text.indexOf(word), word.length);
         errors.push({
-          id: `phonetic-${word}-${index}`,
+          id: `phonetic-${word}-${Math.random()}`, // Use random to ensure unique ID
           incorrectWord: word,
           suggestions: phoneticSuggestions,
           context,
@@ -229,6 +232,7 @@ const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError
           errorType: 'spelling',
           confidence: 0.7
         });
+        processedWords.add(word);
       }
     }
   });
