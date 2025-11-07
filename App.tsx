@@ -102,10 +102,15 @@ const RESPONSE_SCHEMA = {
     required: ['spelling_corrections', 'missing_elements', 'formatting_suggestions', 'general_feedback']
 };
 
-// Enhanced error generation with precise positions
+// Enhanced error generation with precise positions - FIXED
 const generateErrorsFromAI = (text: string, corrections: AIResponse['spelling_corrections']): SpellError[] => {
   const foundErrors: SpellError[] = [];
-  if (!corrections) return [];
+  if (!corrections || corrections.length === 0) {
+    console.log("No corrections from AI");
+    return [];
+  }
+  
+  console.log("AI Corrections received:", corrections); // Debug log
   
   // Store AI corrections in learning system
   corrections.forEach(({ word, suggestion, confidence = 0.8, reason = "" }) => {
@@ -115,12 +120,8 @@ const generateErrorsFromAI = (text: string, corrections: AIResponse['spelling_co
   // Sort by confidence to prioritize better suggestions
   const sortedCorrections = [...corrections].sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
   
-  // Create a map to track which words have been processed to avoid duplicates
-  const processedWords = new Set<string>();
-  
+  // Find all occurrences of each correction in the text
   sortedCorrections.forEach(({ word, suggestion, confidence = 0.8, reason = "" }) => {
-    if (processedWords.has(word)) return; // Skip if already processed
-    
     // Use word boundaries to find all occurrences of the word
     const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`\\b${escapedWord}\\b`, 'g');
@@ -129,26 +130,30 @@ const generateErrorsFromAI = (text: string, corrections: AIResponse['spelling_co
     while ((match = regex.exec(text)) !== null) {
       const id = `err-${word}-${match.index}`;
       
-      const error: SpellError = {
-        id,
-        incorrectWord: word,
-        suggestions: [suggestion],
-        context: getContext(text, match.index, word.length),
-        position: { start: match.index, end: match.index + word.length },
-        errorType: 'spelling',
-        confidence
-      };
-      
-      // Enhance with learning system
-      const enhancedSuggestions = learningSystem.getEnhancedSuggestions(word, [suggestion]);
-      error.suggestions = enhancedSuggestions;
-      
-      foundErrors.push(error);
+      // Check if this error already exists (avoid duplicates)
+      if (!foundErrors.some(e => e.id === id)) {
+        const error: SpellError = {
+          id,
+          incorrectWord: word,
+          suggestions: [suggestion],
+          context: getContext(text, match.index, word.length),
+          position: { start: match.index, end: match.index + word.length },
+          errorType: 'spelling',
+          confidence
+        };
+        
+        // Enhance with learning system
+        const enhancedSuggestions = learningSystem.getEnhancedSuggestions(word, [suggestion]);
+        error.suggestions = enhancedSuggestions;
+        
+        foundErrors.push(error);
+        
+        console.log(`Found error: ${word} at position ${match.index}`); // Debug log
+      }
     }
-    
-    processedWords.add(word);
   });
   
+  console.log(`Generated ${foundErrors.length} errors from AI corrections`); // Debug log
   return foundErrors;
 };
 
@@ -208,7 +213,7 @@ const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError
       const confidence = learningSystem.userPreferences.storedCorrections.find(c => c.incorrect === word)?.confidence || 0.6;
       
       errors.push({
-        id: `stored-${word}-${Math.random()}`, // Use random to ensure unique ID
+        id: `stored-${word}-${Date.now()}-${Math.random()}`, // Use timestamp + random for unique ID
         incorrectWord: word,
         suggestions: [storedCorrection],
         context,
@@ -224,7 +229,7 @@ const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError
       if (phoneticSuggestions.length > 0) {
         const context = getContext(text, text.indexOf(word), word.length);
         errors.push({
-          id: `phonetic-${word}-${Math.random()}`, // Use random to ensure unique ID
+          id: `phonetic-${word}-${Date.now()}-${Math.random()}`, // Use timestamp + random for unique ID
           incorrectWord: word,
           suggestions: phoneticSuggestions,
           context,
@@ -306,7 +311,7 @@ const App: React.FC = () => {
       // handle both safely:
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash", // you selected option A (fast)
-        contents: `${documentText}`,
+        contents: [{ text: documentText }], // Changed to proper format
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: "application/json",
@@ -321,8 +326,12 @@ const App: React.FC = () => {
         rawText = (response.text as unknown as string) ?? JSON.stringify(response);
       }
 
+      console.log("Raw AI response:", rawText); // Debug log
+      
       const resultJson = JSON.parse(rawText) as AIResponse; // FIXED: Correct type reference
       setAnalysisResult(resultJson);
+
+      console.log("Parsed AI result:", resultJson); // Debug log
 
       // Generate errors from AI response
       const generatedErrors = generateErrorsFromAI(documentText, resultJson.spelling_corrections);
