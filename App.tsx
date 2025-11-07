@@ -307,21 +307,25 @@ const App: React.FC = () => {
       // Use the browser-exposed VITE_ env variable
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
-      // Create a more detailed prompt to ensure spelling errors are detected
-      const detailedPrompt = `
-      Please analyze this Bengali document for spelling errors, grammar issues, and formatting problems.
-      The document is: "${documentText}"
+      // Create a focused prompt specifically for spelling errors
+      const spellingPrompt = `
+      Please analyze this Bengali document and focus ONLY on spelling errors:
       
-      Your task is to identify ALL misspelled Bengali words and provide corrections.
-      Pay special attention to common Bengali misspellings like "সম্বব" (should be "সম্ভব"), "ছারপত্র" (should be "ছাড়পত্র"), etc.
+      "${documentText}"
+      
+      Identify ALL misspelled Bengali words. Pay special attention to:
+      - "সম্বব" (should be "সম্ভব")
+      - "ছারপত্র" (should be "ছাড়পত্র")
+      - "চাকুরিজিবি" (should be "চাকরিজীবী")
+      - "চট্রগ্রামে" (should be "চট্টগ্রামে")
+      
       Return your response in the exact JSON format specified in the system instruction.
+      Include all spelling corrections in the "spelling_corrections" array.
       `;
 
-      // the @google/genai SDK may return a .text or .text() depending on version.
-      // handle both safely:
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash", // you selected option A (fast)
-        contents: [{ text: detailedPrompt }],
+        model: "gemini-2.5-flash",
+        contents: [{ text: spellingPrompt }],
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: "application/json",
@@ -338,7 +342,7 @@ const App: React.FC = () => {
 
       console.log("Raw AI response:", rawText); // Debug log
       
-      const resultJson = JSON.parse(rawText) as AIResponse; // FIXED: Correct type reference
+      const resultJson = JSON.parse(rawText) as AIResponse;
       setAnalysisResult(resultJson);
 
       console.log("Parsed AI result:", resultJson); // Debug log
