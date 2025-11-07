@@ -108,7 +108,7 @@ const generateErrorsFromAI = (text: string, corrections: AIResponse['spelling_co
   if (!corrections) return [];
   
   // Store AI corrections in learning system
-  corrections.forEach(({ word, suggestion, confidence = 0.8 }) => {
+  corrections.forEach(({ word, suggestion, confidence = 0.8, reason = "" }) => {
     learningSystem.storeAICorrection(word, suggestion, confidence);
   });
   
@@ -191,46 +191,45 @@ const getPhoneticSuggestions = (word: string): string[] => {
   return [...new Set(suggestions)]; // Remove duplicates
 };
 
-// Enhanced spell checking with phonetic and grammar rules
+// NEW: Enhanced spell checking with stored corrections as fallback
 const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError[] => {
   const errors: SpellError[] = [];
-  
-  // Get stored corrections to use for local checking
-  const storedCorrections = learningSystem.userPreferences.storedCorrections;
   
   // Basic word extraction (you can enhance this with proper Bengali tokenization)
   const words = text.match(/\b[\u0980-\u09FF]+\b/g) || [];
   
   words.forEach((word, index) => {
     // Check against stored corrections first
-    const storedCorrection = storedCorrections.find(c => c.incorrect === word);
-    if (storedCorrection && !storedCorrection.acceptedByUser) {
+    const storedCorrection = learningSystem.getStoredCorrection(word);
+    if (storedCorrection) {
       const context = getContext(text, text.indexOf(word), word.length);
+      const confidence = learningSystem.userPreferences.storedCorrections.find(c => c.incorrect === word)?.confidence || 0.6;
+      
       errors.push({
         id: `stored-${word}-${index}`,
         incorrectWord: word,
-        suggestions: [storedCorrection.correct],
+        suggestions: [storedCorrection],
         context,
         position: { start: text.indexOf(word), end: text.indexOf(word) + word.length },
         errorType: 'spelling',
-        confidence: storedCorrection.confidence
+        confidence
       });
-    }
-    
-    // Check against known misspellings
-    const phoneticSuggestions = getPhoneticSuggestions(word);
-    
-    if (phoneticSuggestions.length > 0) {
-      const context = getContext(text, text.indexOf(word), word.length);
-      errors.push({
-        id: `phonetic-${word}-${index}`,
-        incorrectWord: word,
-        suggestions: phoneticSuggestions,
-        context,
-        position: { start: text.indexOf(word), end: text.indexOf(word) + word.length },
-        errorType: 'spelling',
-        confidence: 0.7
-      });
+    } else {
+      // Check against known misspellings
+      const phoneticSuggestions = getPhoneticSuggestions(word);
+      
+      if (phoneticSuggestions.length > 0) {
+        const context = getContext(text, text.indexOf(word), word.length);
+        errors.push({
+          id: `phonetic-${word}-${index}`,
+          incorrectWord: word,
+          suggestions: phoneticSuggestions,
+          context,
+          position: { start: text.indexOf(word), end: text.indexOf(word) + word.length },
+          errorType: 'spelling',
+          confidence: 0.7
+        });
+      }
     }
   });
   
@@ -327,7 +326,7 @@ const App: React.FC = () => {
 
     } catch (error) {
       console.error("Error calling Gemini API:", error);
-      // Fallback: use local spell checking
+      // Fallback: use stored corrections and phonetic matching
       const localErrors = performSpellCheck(documentText, spellCheckOptions);
       setErrors(localErrors);
     } finally {
@@ -339,15 +338,14 @@ const App: React.FC = () => {
     setHistory(prev => [...prev, { documentText, ignoredWords }]);
     setDocumentText(newText);
     
-    // Re-run spell check on text change (with debounce)
-    if (analysisResult) {
+    // Only re-run spell check if we have stored corrections and no active AI analysis
+    if (!analysisResult) {
+      const localErrors = performSpellCheck(newText, spellCheckOptions);
+      setErrors(localErrors);
+    } else {
+      // If we have AI analysis, update based on that
       const newErrors = generateErrorsFromAI(newText, analysisResult.spelling_corrections);
       setErrors(newErrors);
-    } else {
-      // For real-time checking, you could implement local spell check here
-      // const localErrors = performSpellCheck(newText, spellCheckOptions);
-      // setErrors(localErrors);
-      setErrors([]);
     }
 
     if (popup) {
@@ -364,7 +362,7 @@ const App: React.FC = () => {
     const errorToFix = errors.find(e => e.id === errorId);
     if (!errorToFix) return;
 
-    // Learn from this correction
+    // Learn from this correction - this will add the accepted word to the learning system
     learningSystem.learnFromCorrection(errorToFix, 'accept');
 
     // Use regex to replace all occurrences of the word with the suggestion
@@ -402,12 +400,13 @@ const App: React.FC = () => {
         const newErrors = generateErrorsFromAI(previousState.documentText, analysisResult.spelling_corrections);
         setErrors(newErrors);
     } else {
-        setErrors([]);
+        const localErrors = performSpellCheck(previousState.documentText, spellCheckOptions);
+        setErrors(localErrors);
     }
     
     setPopup(null);
     setActiveErrorId(null);
-  }, [history, analysisResult]);
+  }, [history, analysisResult, spellCheckOptions]);
 
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
