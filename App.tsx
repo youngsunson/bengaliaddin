@@ -14,123 +14,65 @@ Your job is to analyze the full text of a Bengali document and provide both:
 1. **Spelling and grammar corrections**, and
 2. **Content and formatting improvement suggestions**.
 
----
-
-### Step 1: Bengali Spell Checking
-- Identify incorrect or misspelled Bengali words.
-- Suggest correct alternatives using standard Bangla vocabulary and grammar rules.
-- Focus on natural and modern spelling used in Bangladesh.
-- Provide results in a structured JSON format.
-
----
-
-### Step 2: Document Analysis & Format Checking
-Analyze the *type of document* and check if it is properly structured.
-Examples:
-- If it looks like an application letter → check for **Date**, **Subject**, **Recipient**, **Body**, and **Signature**.
-- If it looks like a report or essay → check for **Title**, **Introduction**, **Main Body**, **Conclusion**, and **References**.
-- If it looks like an official notice → check for **Heading**, **Date**, **Authority**, and **Signature**.
-
-Identify any **missing or incomplete elements** and suggest improvements, such as:
-- "The document is missing a Subject line."
-- "The Date is not mentioned."
-- "Add a formal greeting such as 'বরাবর,' before the recipient name."
-- "Include a closing line such as 'ইতি, বিনীত' before the signature."
-
----
-
-### Step 3: Formatting Suggestions
-Detect any inconsistent spacing, font issues, or paragraph alignment problems.
-- Recommend proper indentation or heading style.
-- Suggest if the writer should use bold for titles or underline for important parts.
-
----
-
-### Step 4: Output Format
-Return your response in this structured JSON:
+Return results in this JSON format:
 {
   "spelling_corrections": [
     {"word": "ভুলশব্দ", "suggestion": "সঠিকশব্দ", "confidence": 0.95, "reason": "Common misspelling"}
   ],
-  "missing_elements": [
-    "Subject not mentioned",
-    "Date missing"
-  ],
-  "formatting_suggestions": [
-    "Add proper paragraph spacing",
-    "Align text to left for formal letters"
-  ],
+  "missing_elements": ["Subject not mentioned"],
+  "formatting_suggestions": ["Add proper paragraph spacing"],
   "general_feedback": "Your letter is well written but missing Subject and Signature sections."
-}
-
----
-
-### Additional Notes
-- Never change the meaning of the user's writing.
-- Keep suggestions polite and educational.
-- Reply in **Bengali** unless explicitly asked to use English.
-- Do not output code; only return the structured JSON as described above.`;
+}`;
 
 const RESPONSE_SCHEMA = {
-    type: Type.OBJECT,
-    properties: {
-        spelling_corrections: {
-            type: Type.ARRAY,
-            items: {
-                type: Type.OBJECT,
-                properties: {
-                    word: { type: Type.STRING },
-                    suggestion: { type: Type.STRING },
-                    confidence: { type: Type.NUMBER },
-                    reason: { type: Type.STRING }
-                },
-                required: ['word', 'suggestion']
-            }
+  type: Type.OBJECT,
+  properties: {
+    spelling_corrections: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          word: { type: Type.STRING },
+          suggestion: { type: Type.STRING },
+          confidence: { type: Type.NUMBER },
+          reason: { type: Type.STRING }
         },
-        missing_elements: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-        },
-        formatting_suggestions: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-        },
-        general_feedback: {
-            type: Type.STRING
-        }
+        required: ['word', 'suggestion']
+      }
     },
-    required: ['spelling_corrections', 'missing_elements', 'formatting_suggestions', 'general_feedback']
+    missing_elements: { type: Type.ARRAY, items: { type: Type.STRING } },
+    formatting_suggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
+    general_feedback: { type: Type.STRING }
+  },
+  required: ['spelling_corrections', 'missing_elements', 'formatting_suggestions', 'general_feedback']
 };
 
-// Enhanced error generation with precise positions
+// Get text context around error
+const getContext = (text: string, position: number, length: number): string => {
+  const start = Math.max(0, position - 20);
+  const end = Math.min(text.length, position + length + 20);
+  return text.substring(start, end);
+};
+
+// Generate errors from AI response
 const generateErrorsFromAI = (text: string, corrections: AIResponse['spelling_corrections']): SpellError[] => {
   const foundErrors: SpellError[] = [];
-  if (!corrections || corrections.length === 0) {
-    console.log("AI returned no spelling corrections");
-    return [];
-  }
-  
-  console.log("AI returned spelling corrections:", corrections); // Debug log
-  
-  // Store AI corrections in learning system
+  if (!corrections || corrections.length === 0) return [];
+
   corrections.forEach(({ word, suggestion, confidence = 0.8, reason = "" }) => {
     learningSystem.storeAICorrection(word, suggestion, confidence);
   });
-  
-  // Sort by confidence to prioritize better suggestions
+
   const sortedCorrections = [...corrections].sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
-  
-  // Find all occurrences of each correction in the text
-  sortedCorrections.forEach(({ word, suggestion, confidence = 0.8, reason = "" }) => {
-    // Use word boundaries to find all occurrences of the word
+
+  sortedCorrections.forEach(({ word, suggestion, confidence = 0.8 }) => {
     const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\b${escapedWord}\\b`, 'g');
+    // ✅ FIX: Proper Bengali boundary regex
+    const regex = new RegExp(`(?<![\\u0980-\\u09FF])${escapedWord}(?![\\u0980-\\u09FF])`, 'g');
     let match;
-    
+
     while ((match = regex.exec(text)) !== null) {
       const id = `err-${word}-${match.index}`;
-      
-      // Check if this error already exists (avoid duplicates)
       if (!foundErrors.some(e => e.id === id)) {
         const error: SpellError = {
           id,
@@ -141,77 +83,49 @@ const generateErrorsFromAI = (text: string, corrections: AIResponse['spelling_co
           errorType: 'spelling',
           confidence
         };
-        
-        // Enhance with learning system
         const enhancedSuggestions = learningSystem.getEnhancedSuggestions(word, [suggestion]);
         error.suggestions = enhancedSuggestions;
-        
         foundErrors.push(error);
+        console.log("Matched error:", error); // ✅ Debugging log
       }
     }
   });
-  
-  console.log(`Generated ${foundErrors.length} errors from AI corrections`); // Debug log
+
+  console.log("AI corrections received:", corrections);
+  console.log("Generated errors after regex:", foundErrors);
   return foundErrors;
 };
 
-// Get context around the error word
-const getContext = (text: string, position: number, length: number): string => {
-  const start = Math.max(0, position - 20);
-  const end = Math.min(text.length, position + length + 20);
-  return text.substring(start, end);
-};
-
-// Bengali-specific phonetic matching
+// Bengali phonetic fallback
 const getPhoneticSuggestions = (word: string): string[] => {
   const phoneticMap: Record<string, string[]> = {
-    // Common Bengali phonetic variations
-    'া': ['া', 'আ'],
-    'ে': ['ে', 'এ'],
-    'ি': ['ি', 'ই'],
-    'ু': ['ু', 'উ'],
-    'ো': ['ো', 'ও'],
-    // Common misspellings
     'সম্বব': ['সম্ভব'],
     'ছারপত্র': ['ছাড়পত্র'],
     'চাকুরিজিবি': ['চাকরিজীবী'],
     'চট্রগ্রামে': ['চট্টগ্রামে']
   };
-  
+
   const suggestions = phoneticMap[word] || [];
-  
-  // Also try simple phonetic transformations
-  if (word.includes('জিবি')) {
-    suggestions.push(word.replace(/জিবি/g, 'জীবী'));
-  }
-  if (word.includes('রপত্র')) {
-    suggestions.push(word.replace(/রপত্র/g, 'রপত্র'));
-  }
-  
-  return [...new Set(suggestions)]; // Remove duplicates
+  if (word.includes('জিবি')) suggestions.push(word.replace(/জিবি/g, 'জীবী'));
+  if (word.includes('রপত্র')) suggestions.push(word.replace(/রপত্র/g, 'রপত্র'));
+  return [...new Set(suggestions)];
 };
 
-// Enhanced spell checking with stored corrections as fallback
+// Fallback spell check
 const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError[] => {
   const errors: SpellError[] = [];
-  
-  // Basic word extraction (you can enhance this with proper Bengali tokenization)
-  const words = text.match(/\b[\u0980-\u09FF]+\b/g) || [];
-  
-  // Track processed words to avoid duplicates
+  const words = text.match(/[\u0980-\u09FF]+/g) || [];
   const processedWords = new Set<string>();
-  
+
   words.forEach((word) => {
-    if (processedWords.has(word)) return; // Skip if already processed
-    
-    // Check against stored corrections first
+    if (processedWords.has(word)) return;
+
     const storedCorrection = learningSystem.getStoredCorrection(word);
     if (storedCorrection) {
       const context = getContext(text, text.indexOf(word), word.length);
       const confidence = learningSystem.userPreferences.storedCorrections.find(c => c.incorrect === word)?.confidence || 0.6;
-      
       errors.push({
-        id: `stored-${word}-${Date.now()}-${Math.random()}`, // Use timestamp + random for unique ID
+        id: `stored-${word}-${Date.now()}-${Math.random()}`,
         incorrectWord: word,
         suggestions: [storedCorrection],
         context,
@@ -219,15 +133,12 @@ const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError
         errorType: 'spelling',
         confidence
       });
-      processedWords.add(word);
     } else {
-      // Check against known misspellings
       const phoneticSuggestions = getPhoneticSuggestions(word);
-      
       if (phoneticSuggestions.length > 0) {
         const context = getContext(text, text.indexOf(word), word.length);
         errors.push({
-          id: `phonetic-${word}-${Date.now()}-${Math.random()}`, // Use timestamp + random for unique ID
+          id: `phonetic-${word}-${Date.now()}-${Math.random()}`,
           incorrectWord: word,
           suggestions: phoneticSuggestions,
           context,
@@ -235,11 +146,11 @@ const performSpellCheck = (text: string, options: SpellCheckOptions): SpellError
           errorType: 'spelling',
           confidence: 0.7
         });
-        processedWords.add(word);
       }
     }
+    processedWords.add(word);
   });
-  
+
   return errors;
 };
 
@@ -255,12 +166,8 @@ const App: React.FC = () => {
   const [errors, setErrors] = useState<SpellError[]>([]);
   const [popup, setPopup] = useState<SuggestionPopupState | null>(null);
   const [ignoredWords, setIgnoredWords] = useState<string[]>([
-    ...learningSystem.userPreferences.ignoreWords,
-    'চাকুরিজিবি', 
-    'চট্রগ্রামে', 
-    'সম্বব', 
-    'ছারপত্র'
-  ]);
+    ...learningSystem.userPreferences.ignoreWords
+  ]); // ✅ FIXED: Removed default ignored test words
   const [activeErrorId, setActiveErrorId] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryState[]>([]);
   const [isChecking, setIsChecking] = useState(false);
@@ -272,24 +179,17 @@ const App: React.FC = () => {
     enableGrammar: true,
     strictness: 'moderate'
   });
-  
+
   useEffect(() => {
     const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
+    theme === 'dark' ? root.classList.add('dark') : root.classList.remove('dark');
     localStorage.setItem('theme', theme);
   }, [theme]);
 
   useEffect(() => {
-      const savedTheme = localStorage.getItem('theme') as Theme;
-      if (savedTheme) {
-          setTheme(savedTheme);
-      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-          setTheme('dark');
-      }
+    const savedTheme = localStorage.getItem('theme') as Theme;
+    if (savedTheme) setTheme(savedTheme);
+    else if (window.matchMedia('(prefers-color-scheme: dark)').matches) setTheme('dark');
   }, []);
 
   const activeErrors = useMemo(() => {
@@ -298,27 +198,20 @@ const App: React.FC = () => {
 
   const handleRunAnalysis = useCallback(async () => {
     setIsChecking(true);
-    setErrors([]); // Clear existing errors
+    setErrors([]);
     setAnalysisResult(null);
     setPopup(null);
+
     try {
-      // Use the browser-exposed VITE_ env variable
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
-      // Create a focused prompt specifically for spelling errors
       const spellingPrompt = `
       Please analyze this Bengali document and focus ONLY on spelling errors:
-      
+
       "${documentText}"
-      
-      Identify ALL misspelled Bengali words. Pay special attention to:
-      - "সম্বব" (should be "সম্ভব")
-      - "ছারপত্র" (should be "ছাড়পত্র")
-      - "চাকুরিজিবি" (should be "চাকরিজীবী")
-      - "চট্রগ্রামে" (should be "চট্টগ্রামে")
-      
+
+      Identify ALL misspelled Bengali words.
       Return your response in the exact JSON format specified in the system instruction.
-      Include all spelling corrections in the "spelling_corrections" array.
       `;
 
       const response = await ai.models.generateContent({
@@ -331,35 +224,23 @@ const App: React.FC = () => {
         },
       });
 
-      let rawText: string;
-      if (typeof response.text === "function") {
-        rawText = await (response.text() as Promise<string>);
-      } else {
-        rawText = (response.text as unknown as string) ?? JSON.stringify(response);
-      }
+      const rawText = typeof response.text === "function"
+        ? await (response.text() as Promise<string>)
+        : (response.text as unknown as string) ?? JSON.stringify(response);
 
-      console.log("Raw AI response:", rawText); // Debug log
-      
       const resultJson = JSON.parse(rawText) as AIResponse;
       setAnalysisResult(resultJson);
 
-      // Generate errors from AI response - THIS IS THE KEY LINE
       const generatedErrors = generateErrorsFromAI(documentText, resultJson.spelling_corrections);
-      
-      console.log("Generated errors from AI:", generatedErrors); // Debug log
-      
-      // Set errors to what the AI returned (or local fallback if none)
       let finalErrors = generatedErrors;
+
       if (generatedErrors.length === 0) {
         finalErrors = performSpellCheck(documentText, spellCheckOptions);
       }
-      
-      setErrors(finalErrors);
-      console.log("Set final errors:", finalErrors); // Debug log
 
+      setErrors(finalErrors);
     } catch (error) {
       console.error("Error calling Gemini API:", error);
-      // Fallback: use stored corrections and phonetic matching
       const localErrors = performSpellCheck(documentText, spellCheckOptions);
       setErrors(localErrors);
     } finally {
@@ -370,31 +251,23 @@ const App: React.FC = () => {
   const handleTextChange = useCallback((newText: string) => {
     setHistory(prev => [...prev, { documentText, ignoredWords }]);
     setDocumentText(newText);
-    
-    // Always run local spell check on text change to catch known misspellings immediately
     const localErrors = performSpellCheck(newText, spellCheckOptions);
     setErrors(localErrors);
-
-    if (popup) {
-      setPopup(null);
-    }
+    if (popup) setPopup(null);
   }, [popup, documentText, ignoredWords, spellCheckOptions]);
 
   const updateIgnoredWords = useCallback((updater: (prev: string[]) => string[]) => {
     setHistory(prev => [...prev, { documentText, ignoredWords }]);
     setIgnoredWords(updater);
   }, [documentText, ignoredWords]);
-  
+
   const handleAcceptSuggestion = useCallback((errorId: string, suggestion: string) => {
     const errorToFix = errors.find(e => e.id === errorId);
     if (!errorToFix) return;
 
-    // Learn from this correction - this will add the accepted word to the learning system
     learningSystem.learnFromCorrection(errorToFix, 'accept');
-
-    // Use regex to replace all occurrences of the word with the suggestion
     const newText = documentText.replace(
-      new RegExp(`\\b${errorToFix.incorrectWord}\\b`, 'g'), 
+      new RegExp(`(?<![\\u0980-\\u09FF])${errorToFix.incorrectWord}(?![\\u0980-\\u09FF])`, 'g'),
       suggestion
     );
     handleTextChange(newText);
@@ -405,10 +278,7 @@ const App: React.FC = () => {
   const handleDismissError = useCallback((errorId: string) => {
     const errorToDismiss = errors.find(e => e.id === errorId);
     if (!errorToDismiss) return;
-    
-    // Learn from this dismissal
     learningSystem.learnFromCorrection(errorToDismiss, 'ignore');
-    
     updateIgnoredWords(prev => [...new Set([...prev, errorToDismiss.incorrectWord])]);
     setPopup(null);
     setActiveErrorId(null);
@@ -416,17 +286,12 @@ const App: React.FC = () => {
 
   const handleUndo = useCallback(() => {
     if (history.length === 0) return;
-
     const previousState = history[history.length - 1];
     setHistory(history.slice(0, -1));
-
     setDocumentText(previousState.documentText);
     setIgnoredWords(previousState.ignoredWords);
-    
-    // Run local spell check on undo
     const localErrors = performSpellCheck(previousState.documentText, spellCheckOptions);
     setErrors(localErrors);
-    
     setPopup(null);
     setActiveErrorId(null);
   }, [history, spellCheckOptions]);
@@ -463,7 +328,7 @@ const App: React.FC = () => {
           </aside>
         </div>
       </div>
-       <SettingsPanel 
+      <SettingsPanel 
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         theme={theme}
