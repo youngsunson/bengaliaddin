@@ -349,7 +349,15 @@ const App: React.FC = () => {
 
       // Generate errors from AI response
       const generatedErrors = generateErrorsFromAI(documentText, resultJson.spelling_corrections);
-      setErrors(generatedErrors);
+      
+      // If AI didn't find spelling errors, use local spell check as fallback
+      let finalErrors = generatedErrors;
+      if (generatedErrors.length === 0) {
+        console.log("AI found no spelling errors, using local spell check");
+        finalErrors = performSpellCheck(documentText, spellCheckOptions);
+      }
+      
+      setErrors(finalErrors);
 
     } catch (error) {
       console.error("Error calling Gemini API:", error);
@@ -365,20 +373,14 @@ const App: React.FC = () => {
     setHistory(prev => [...prev, { documentText, ignoredWords }]);
     setDocumentText(newText);
     
-    // Only re-run spell check if we have stored corrections and no active AI analysis
-    if (!analysisResult) {
-      const localErrors = performSpellCheck(newText, spellCheckOptions);
-      setErrors(localErrors);
-    } else {
-      // If we have AI analysis, update based on that
-      const newErrors = generateErrorsFromAI(newText, analysisResult.spelling_corrections);
-      setErrors(newErrors);
-    }
+    // Always run local spell check on text change
+    const localErrors = performSpellCheck(newText, spellCheckOptions);
+    setErrors(localErrors);
 
     if (popup) {
       setPopup(null);
     }
-  }, [popup, documentText, ignoredWords, analysisResult, spellCheckOptions]);
+  }, [popup, documentText, ignoredWords, spellCheckOptions]);
 
   const updateIgnoredWords = useCallback((updater: (prev: string[]) => string[]) => {
     setHistory(prev => [...prev, { documentText, ignoredWords }]);
@@ -423,17 +425,13 @@ const App: React.FC = () => {
     setDocumentText(previousState.documentText);
     setIgnoredWords(previousState.ignoredWords);
     
-    if (analysisResult) {
-        const newErrors = generateErrorsFromAI(previousState.documentText, analysisResult.spelling_corrections);
-        setErrors(newErrors);
-    } else {
-        const localErrors = performSpellCheck(previousState.documentText, spellCheckOptions);
-        setErrors(localErrors);
-    }
+    // Run local spell check on undo
+    const localErrors = performSpellCheck(previousState.documentText, spellCheckOptions);
+    setErrors(localErrors);
     
     setPopup(null);
     setActiveErrorId(null);
-  }, [history, analysisResult, spellCheckOptions]);
+  }, [history, spellCheckOptions]);
 
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
