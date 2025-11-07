@@ -296,10 +296,13 @@ const App: React.FC = () => {
     setAnalysisResult(null);
     setPopup(null);
     try {
+      // Use the browser-exposed VITE_ env variable
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-      
+
+      // the @google/genai SDK may return a .text or .text() depending on version.
+      // handle both safely:
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.5-flash", // you selected option A (fast)
         contents: `${documentText}`,
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
@@ -315,7 +318,7 @@ const App: React.FC = () => {
         rawText = (response.text as unknown as string) ?? JSON.stringify(response);
       }
 
-      const resultJson = JSON.parse(rawText) as AIResponse; // Fixed type
+      const resultJson = JSON.parse(rawText) as AIResponse; // FIXED: Correct type reference
       setAnalysisResult(resultJson);
 
       // Generate errors from AI response
