@@ -205,14 +205,6 @@ const App: React.FC = () => {
       const wordText = await getWordDocumentText();
       setDocumentText(wordText);
       
-      if (!wordText.trim()) {
-        console.warn("No text retrieved from Word document");
-        // If no text is retrieved, we can't analyze anything
-        setErrors([]);
-        setAnalysisResult(null);
-        return;
-      }
-      
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
       // ✅ UPDATED: Comprehensive prompt in Bengali
