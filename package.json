@@ -12,7 +12,7 @@
     "react-dom": "^19.2.0",
     "react": "^19.2.0",
     "@google/genai": "^1.28.0",
-    "@microsoft/office-js": "^1.1.49"  // Add this line
+    "@microsoft/office-js": "^1.1.49"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
