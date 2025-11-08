@@ -43,6 +43,7 @@ export const WordDocument: React.FC<WordDocumentProps> = ({
       }
       
       // Add the error word with highlighting
+      // Use the actual text from the document based on error position
       result.push(
         <span
           key={`${error.id}-${index}`}
@@ -51,12 +52,12 @@ export const WordDocument: React.FC<WordDocumentProps> = ({
             e.stopPropagation();
             const rect = e.currentTarget.getBoundingClientRect();
             onWordClick({
-              error,
+              error, // Still pass the error object for suggestion data
               position: { top: rect.top - 10, left: rect.left },
             });
           }}
         >
-          {error.incorrectWord}
+          {text.substring(error.position.start, error.position.end)} {/* <-- Fixed: Use actual text from doc */}
         </span>
       );
       
