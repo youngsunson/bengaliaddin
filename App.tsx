@@ -6,7 +6,33 @@ import { SettingsPanel } from './components/SettingsPanel';
 import type { SpellError, SuggestionPopupState, AIResponse, SpellCheckOptions } from './types';
 import { GoogleGenAI, Type } from "@google/genai";
 import { learningSystem } from './learning';
-import { getWordDocumentText, highlightSpellingErrorsInWord, replaceWordInWord } from './WordIntegration';
+
+// Simulated Word integration functions
+const getWordDocumentText = async (): Promise<string> => {
+  // Simulate getting text from Word document
+  // In a real Word add-in, this would connect to the actual Word document
+  return `বরাবর
+প্রধান শিক্ষক
+ক স্কুল এন্ড কলেজ
+ঢাকা
+
+মহোদয়
+আমি আপনার স্কুলের একজন ছাত্র। আমার নাম করিম। আমি দশম শ্রেনিতে পড়ি। আমার বাবা একজন সরকারি চাকুরিজিবি। তিনি সম্প্রতি চট্রগ্রামে বদলি হয়েছেন। তাই আমার পক্ষে ঢাকায় থেকে পড়াশুনা চালিয়ে যাওয়া সম্বব নয়।
+
+অতএব, আপনার কাছে আমার আকুল আবেদন, আমাকে ছারপত্র দিয়ে বাধিত করবেন।
+
+আপনার একান্ত অনুগত ছাত্র
+করিম
+দশম শ্রেনি`;
+};
+
+const highlightSpellingErrorsInWord = async (errors: any[]): Promise<void> => {
+  console.log("Highlighting errors in Word:", errors);
+};
+
+const replaceWordInWord = async (oldWord: string, newWord: string): Promise<void> => {
+  console.log(`Replacing "${oldWord}" with "${newWord}" in Word document`);
+};
 
 const SYSTEM_INSTRUCTION = `আপনি একজন বাংলা লেখার সহকারী। একটি বাংলা নথির সম্পূর্ণ বিশ্লেষণ করুন এবং নিম্নলিখিত বিষয়গুলি প্রদান করুন:
 1. **বানান এবং ব্যাকরণ সংশোধন**, এবং
