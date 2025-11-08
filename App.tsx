@@ -1,15 +1,13 @@
 // App.tsx
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { WordDocument } from './components/WordDocument';
 import { AddonPane } from './components/AddonPane';
 import { Ribbon } from './components/Ribbon';
 import { SettingsPanel } from './components/SettingsPanel';
 import type { SpellError, SuggestionPopupState, AIResponse, SpellCheckOptions } from './types';
-import { INITIAL_DOCUMENT_TEXT } from './constants';
 import { GoogleGenAI, Type } from "@google/genai";
 import { learningSystem } from './learning';
+import { getWordDocumentText, highlightSpellingErrorsInWord, replaceWordInWord } from './WordIntegration';
 
-// ✅ UPDATED: System instruction in Bengali
 const SYSTEM_INSTRUCTION = `আপনি একজন বাংলা লেখার সহকারী। একটি বাংলা নথির সম্পূর্ণ বিশ্লেষণ করুন এবং নিম্নলিখিত বিষয়গুলি প্রদান করুন:
 1. **বানান এবং ব্যাকরণ সংশোধন**, এবং
 2. **কাঠামো ও ফরম্যাটিং উন্নতি পরামর্শ**।
@@ -162,12 +160,12 @@ interface HistoryState {
 type Theme = 'light' | 'dark';
 
 const App: React.FC = () => {
-  const [documentText, setDocumentText] = useState<string>(INITIAL_DOCUMENT_TEXT);
+  const [documentText, setDocumentText] = useState<string>("");
   const [errors, setErrors] = useState<SpellError[]>([]);
   const [popup, setPopup] = useState<SuggestionPopupState | null>(null);
   const [ignoredWords, setIgnoredWords] = useState<string[]>([
     ...learningSystem.userPreferences.ignoreWords
-  ]); // ✅ FIXED: Removed default ignored test words
+  ]);
   const [activeErrorId, setActiveErrorId] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryState[]>([]);
   const [isChecking, setIsChecking] = useState(false);
@@ -203,13 +201,17 @@ const App: React.FC = () => {
     setPopup(null);
 
     try {
+      // Get the current document text from Word
+      const wordText = await getWordDocumentText();
+      setDocumentText(wordText);
+      
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
       // ✅ UPDATED: Comprehensive prompt in Bengali
       const comprehensivePrompt = `
       অনুগ্রহ করে এই বাংলা নথিটি সম্পূর্ণভাবে বিশ্লেষণ করুন:
 
-      "${documentText}"
+      "${wordText}"
 
       নিম্নলিখিত বিষয়গুলি সরবরাহ করুন:
       1. বানান এবং ব্যাকরণ সংশোধন
@@ -237,58 +239,53 @@ const App: React.FC = () => {
       const resultJson = JSON.parse(rawText) as AIResponse;
       setAnalysisResult(resultJson);
 
-      const generatedErrors = generateErrorsFromAI(documentText, resultJson.spelling_corrections);
+      const generatedErrors = generateErrorsFromAI(wordText, resultJson.spelling_corrections);
       let finalErrors = generatedErrors;
 
       if (generatedErrors.length === 0) {
-        finalErrors = performSpellCheck(documentText, spellCheckOptions);
+        finalErrors = performSpellCheck(wordText, spellCheckOptions);
       }
 
       setErrors(finalErrors);
+      
+      // Highlight errors in Word document
+      await highlightSpellingErrorsInWord(finalErrors);
     } catch (error) {
       console.error("Error calling Gemini API:", error);
+      // Fallback: use stored corrections and phonetic matching
       const localErrors = performSpellCheck(documentText, spellCheckOptions);
       setErrors(localErrors);
     } finally {
       setIsChecking(false);
     }
-  }, [documentText, spellCheckOptions]);
+  }, [spellCheckOptions]);
 
-  const handleTextChange = useCallback((newText: string) => {
-    setHistory(prev => [...prev, { documentText, ignoredWords }]);
-    setDocumentText(newText);
-    const localErrors = performSpellCheck(newText, spellCheckOptions);
-    setErrors(localErrors);
-    if (popup) setPopup(null);
-  }, [popup, documentText, ignoredWords, spellCheckOptions]);
-
-  const updateIgnoredWords = useCallback((updater: (prev: string[]) => string[]) => {
-    setHistory(prev => [...prev, { documentText, ignoredWords }]);
-    setIgnoredWords(updater);
-  }, [documentText, ignoredWords]);
-
-  const handleAcceptSuggestion = useCallback((errorId: string, suggestion: string) => {
+  const handleAcceptSuggestion = useCallback(async (errorId: string, suggestion: string) => {
     const errorToFix = errors.find(e => e.id === errorId);
     if (!errorToFix) return;
 
+    // Learn from this correction
     learningSystem.learnFromCorrection(errorToFix, 'accept');
-    const newText = documentText.replace(
-      new RegExp(`(?<![\\u0980-\\u09FF])${errorToFix.incorrectWord}(?![\\u0980-\\u09FF])`, 'g'),
-      suggestion
-    );
-    handleTextChange(newText);
+
+    // Replace the word in the Word document
+    await replaceWordInWord(errorToFix.incorrectWord, suggestion);
+    
+    // Update our local state
     setPopup(null);
     setActiveErrorId(null);
-  }, [documentText, errors, handleTextChange]);
+  }, [errors]);
 
   const handleDismissError = useCallback((errorId: string) => {
     const errorToDismiss = errors.find(e => e.id === errorId);
     if (!errorToDismiss) return;
+    
+    // Learn from this dismissal
     learningSystem.learnFromCorrection(errorToDismiss, 'ignore');
-    updateIgnoredWords(prev => [...new Set([...prev, errorToDismiss.incorrectWord])]);
+    
+    // Update our local state
     setPopup(null);
     setActiveErrorId(null);
-  }, [errors, updateIgnoredWords]);
+  }, [errors]);
 
   const handleUndo = useCallback(() => {
     if (history.length === 0) return;
@@ -307,17 +304,12 @@ const App: React.FC = () => {
       <div className="w-full max-w-7xl bg-white dark:bg-gray-900 shadow-2xl rounded-lg flex flex-col h-[calc(100vh-4rem)]">
         <Ribbon onUndo={handleUndo} canUndo={history.length > 0} onSettingsClick={() => setIsSettingsOpen(true)} />
         <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
+          {/* Main content area - this will be replaced by Word's document */}
           <main className="flex-grow p-4 md:p-8 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
-            <WordDocument
-              text={documentText}
-              onTextChange={handleTextChange}
-              errors={activeErrors}
-              onWordClick={setPopup}
-              popup={popup}
-              onAcceptSuggestion={handleAcceptSuggestion}
-              onDismissError={handleDismissError}
-              activeErrorId={activeErrorId}
-            />
+            {/* This area will be empty as we're using Word's native document */}
+            <div className="text-center text-gray-500 mt-8">
+              <p>Word document content will appear here</p>
+            </div>
           </main>
           <aside className="w-full md:w-80 lg:w-96 bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex-shrink-0">
             <AddonPane
@@ -329,7 +321,7 @@ const App: React.FC = () => {
               analysisResult={analysisResult}
               onRunAnalysis={handleRunAnalysis}
               ignoredWords={ignoredWords}
-              onIgnoredWordsChange={updateIgnoredWords}
+              onIgnoredWordsChange={(updater) => setIgnoredWords(updater)}
             />
           </aside>
         </div>
