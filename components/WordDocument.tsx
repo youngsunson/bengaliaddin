@@ -43,6 +43,7 @@ export const WordDocument: React.FC<WordDocumentProps> = ({
       }
       
       // Add the error word with highlighting
+      // Use the actual text from the document based on error position
       result.push(
         <span
           key={`${error.id}-${index}`}
@@ -56,7 +57,7 @@ export const WordDocument: React.FC<WordDocumentProps> = ({
             });
           }}
         >
-          {error.incorrectWord}
+          {text.substring(error.position.start, error.position.end)} {/* <-- CRITICAL FIX */}
         </span>
       );
       
