@@ -5,84 +5,112 @@ declare global {
   }
 }
 
+/**
+ * Ensures Office.js and Word are ready before API calls.
+ */
+const ensureWordReady = async (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof Office !== "undefined" && Office.context) {
+      resolve(true);
+    } else {
+      Office.onReady(() => resolve(true));
+    }
+  });
+};
+
+/**
+ * Reads the full text from the active Word document body.
+ */
 export const getWordDocumentText = async (): Promise<string> => {
   try {
-    // Check if we're running in a Word environment
-    if (typeof window !== 'undefined' && typeof Word !== 'undefined') {
-      // We're in a Word add-in environment
-      return await Word.run(async (context) => {
-        const doc = context.document;
-        const body = doc.body;
-        body.load('text'); // Load the text property
-        await context.sync(); // Sync the context to get the data
-        return body.text;
-      });
-    } else {
-      // We're not in a Word environment (development/testing)
-      // Return an empty string since there's no actual Word document
-      console.warn("Not running in Word environment - returning empty string");
+    await ensureWordReady();
+    if (typeof Word === "undefined") {
+      console.warn("Word API not available (probably dev mode)");
       return "";
     }
+
+    return await Word.run(async (context) => {
+      const body = context.document.body;
+      body.load("text");
+      await context.sync();
+      return body.text;
+    });
   } catch (error) {
     console.error("Error getting Word document text:", error);
     return "";
   }
 };
 
-export const highlightSpellingErrorsInWord = async (errors: any[]): Promise<void> => {
+/**
+ * Highlights spelling or grammar errors in red underline or background.
+ */
+export const highlightSpellingErrorsInWord = async (
+  errors: { incorrectWord: string }[]
+): Promise<void> => {
+  if (!errors?.length) return;
+
   try {
-    if (typeof window !== 'undefined' && typeof Word !== 'undefined') {
-      // We're in a Word add-in environment
-      await Word.run(async (context) => {
-        const doc = context.document;
-        
-        // For each error, highlight it in the document
-        for (const error of errors) {
-          // Find all occurrences of the incorrect word
-          const searchResults = doc.body.search(error.incorrectWord, {
-            matchCase: false,
-            matchWholeWord: true
-          });
-          searchResults.load('items');
-          await context.sync();
-          
-          // Highlight each occurrence
-          for (const result of searchResults.items) {
-            result.font.color = "red";
-            result.font.underline = Word.UnderlineType.wave;
-          }
-        }
-        
-        await context.sync();
-      });
-    } else {
-      // Development/testing: just log the errors
-      console.log("Highlighting errors in Word (dev mode):", errors);
+    await ensureWordReady();
+    if (typeof Word === "undefined") {
+      console.log("Highlight (dev mode):", errors);
+      return;
     }
+
+    await Word.run(async (context) => {
+      const doc = context.document;
+
+      for (const error of errors) {
+        const searchResults = doc.body.search(error.incorrectWord, {
+          matchCase: false,
+          matchWholeWord: true,
+        });
+        searchResults.load("items");
+        await context.sync();
+
+        for (const item of searchResults.items) {
+          // Apply visual highlight
+          item.font.color = "red";
+          item.font.highlightColor = "yellow";
+          item.font.underline = "Single"; // safest underline type
+        }
+      }
+
+      await context.sync();
+    });
   } catch (error) {
     console.error("Error highlighting spelling errors in Word:", error);
   }
 };
 
-export const replaceWordInWord = async (oldWord: string, newWord: string): Promise<void> => {
+/**
+ * Replaces all occurrences of an incorrect word with a corrected one.
+ */
+export const replaceWordInWord = async (
+  oldWord: string,
+  newWord: string
+): Promise<void> => {
   try {
-    if (typeof window !== 'undefined' && typeof Word !== 'undefined') {
-      // We're in a Word add-in environment
-      await Word.run(async (context) => {
-        const doc = context.document;
-        
-        // Replace all occurrences of oldWord with newWord
-        doc.body.replace(oldWord, newWord, {
-          matchCase: false,
-          matchWholeWord: true
-        });
-        
-        await context.sync();
-      });
-    } else {
-      // Development/testing: just log the replacement
-      console.log(`Replacing "${oldWord}" with "${newWord}" in Word document (dev mode)`);
+    await ensureWordReady();
+    if (typeof Word === "undefined") {
+      console.log(`Replacing "${oldWord}" → "${newWord}" (dev mode)`);
+      return;
     }
+
+    await Word.run(async (context) => {
+      const doc = context.document;
+      const searchResults = doc.body.search(oldWord, {
+        matchCase: false,
+        matchWholeWord: true,
+      });
+      searchResults.load("items");
+      await context.sync();
+
+      for (const item of searchResults.items) {
+        item.insertText(newWord, Word.InsertLocation.replace);
+      }
+
+      await context.sync();
+    });
   } catch (error) {
     console.error("Error replacing word in Word:", error);
   }
