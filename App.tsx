@@ -307,11 +307,13 @@ const App: React.FC = () => {
           {/* Main content area - this will be empty as we're using Word's native document */}
           <main className="flex-grow p-4 md:p-8 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
             {/* This area will be empty as we're using Word's native document */}
-            {/* Removed "Word document content will appear here" text */}
+            <div className="text-center text-gray-500 mt-8">
+              <p>Word document content will appear here</p>
+            </div>
           </main>
           <aside className="w-full md:w-80 lg:w-96 bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex-shrink-0">
-            <div className="sidebar-container">
-              <div className="sidebar-header">Bengali Writing Assistant</div>
+            <div className="add-in-container">
+              <div className="add-in-header">Bengali Writing Assistant</div>
               
               <button 
                 className="analyze-button" 
@@ -321,77 +323,67 @@ const App: React.FC = () => {
                 {isChecking ? 'Analyzing...' : 'Analyze Document'}
               </button>
               
-              {analysisResult ? (
-                <>
-                  <div className="section">
-                    <div className="section-title">General Feedback</div>
-                    <div className="section-content">
-                      {analysisResult.general_feedback}
-                    </div>
-                  </div>
-                  
-                  <div className="section">
-                    <div className="section-title">Spelling Corrections</div>
-                    <div className="section-content">
-                      {analysisResult.spelling_corrections.length > 0 ? (
-                        <ul>
-                          {analysisResult.spelling_corrections.map((corr, index) => (
-                            <li key={index}>{corr.word} → {corr.suggestion}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p>No spelling errors found.</p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="section">
-                    <div className="section-title">Structural Suggestions</div>
-                    <div className="section-content">
-                      {analysisResult.missing_elements.length > 0 ? (
-                        <ul>
-                          {analysisResult.missing_elements.map((element, index) => (
-                            <li key={index}>{element}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p>No structural issues found.</p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="section">
-                    <div className="section-title">Formatting Suggestions</div>
-                    <div className="section-content">
-                      {analysisResult.formatting_suggestions.length > 0 ? (
-                        <ul>
-                          {analysisResult.formatting_suggestions.map((suggestion, index) => (
-                            <li key={index}>{suggestion}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p>No formatting issues found.</p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="learning-system">
-                    <div className="learning-system-label">Learning System</div>
-                    <div className="learning-system-count">{learningSystem.userPreferences.storedCorrections.length}</div>
-                  </div>
-                  
-                  <div className="ignored-words">
-                    <div className="ignored-words-label">Ignored Words</div>
-                    <div className="ignored-words-count">{ignoredWords.length}</div>
-                  </div>
-                </>
-              ) : (
-                <div className="empty-state">
-                  <div className="info-icon">i</div>
-                  <div>Ready for analysis</div>
-                  <div>Click the button above to get feedback on your document.</div>
+              <div className="section">
+                <div className="section-title">General Feedback</div>
+                <div className="section-content">
+                  {analysisResult ? analysisResult.general_feedback : 'Click the button above to get feedback on your document.'}
                 </div>
-              )}
+              </div>
+              
+              <div className="section">
+                <div className="section-title">Spelling Corrections</div>
+                <div className="section-content">
+                  {analysisResult && analysisResult.spelling_corrections.length > 0 ? (
+                    <ul>
+                      {analysisResult.spelling_corrections.map((corr, index) => (
+                        <li key={index}>{corr.word} → {corr.suggestion}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No spelling errors found.</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="section">
+                <div className="section-title">Structural Suggestions</div>
+                <div className="section-content">
+                  {analysisResult && analysisResult.missing_elements.length > 0 ? (
+                    <ul>
+                      {analysisResult.missing_elements.map((element, index) => (
+                        <li key={index}>{element}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No structural issues found.</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="section">
+                <div className="section-title">Formatting Suggestions</div>
+                <div className="section-content">
+                  {analysisResult && analysisResult.formatting_suggestions.length > 0 ? (
+                    <ul>
+                      {analysisResult.formatting_suggestions.map((suggestion, index) => (
+                        <li key={index}>{suggestion}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No formatting issues found.</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="learning-system">
+                <div className="learning-system-label">Learning System</div>
+                <div className="learning-system-count">{learningSystem.userPreferences.storedCorrections.length}</div>
+              </div>
+              
+              <div className="ignored-words">
+                <div className="ignored-words-label">Ignored Words</div>
+                <div className="ignored-words-count">{ignoredWords.length}</div>
+              </div>
             </div>
           </aside>
         </div>
