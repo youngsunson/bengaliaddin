@@ -1,3 +1,4 @@
+// vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -7,4 +8,9 @@ export default defineConfig({
   define: {
     'process.env': process.env,
   },
+  build: {
+    rollupOptions: {
+      external: ['@microsoft/office-js'], // Externalize Office JS for Word environment
+    }
+  }
 });
