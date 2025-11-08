@@ -7,6 +7,7 @@ export interface SpellError {
   position: { start: number; end: number }; // Precise location
   errorType: 'spelling' | 'grammar' | 'formatting';
   confidence: number; // 0-1 confidence score
+  reason?: string; // Optional reason for the error
 }
 
 export interface SuggestionPopupState {
@@ -15,6 +16,7 @@ export interface SuggestionPopupState {
     top: number;
     left: number;
   };
+  contextText?: string; // Full document text for context snippet
 }
 
 export interface AISuggestion {
