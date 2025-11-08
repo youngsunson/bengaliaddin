@@ -1,4 +1,6 @@
 // WordIntegration.ts
+import type { SpellError } from './types'; // Import the shared SpellError type
+
 declare global {
   interface Window {
     Word?: any;
@@ -41,18 +43,12 @@ export const getWordDocumentText = async (): Promise<string> => {
   }
 };
 
-// Define a type for the error object that includes position information
-type WordErrorWithPosition = {
-  incorrectWord: string;
-  position: { start: number; end: number };
-  // Add other properties if needed, like suggestions
-};
-
 /**
  * Highlights spelling or grammar errors in red underline or background using positional information.
+ * Uses the shared SpellError type from types.ts for consistency.
  */
 export const highlightSpellingErrorsInWord = async (
-  errors: WordErrorWithPosition[] // <-- Updated type
+  errors: SpellError[] // <-- Updated type to use shared SpellError
 ): Promise<void> => {
   if (!errors?.length) return;
 
