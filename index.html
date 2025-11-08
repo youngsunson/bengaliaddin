@@ -6,21 +6,143 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bengali Spell Check for Word</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;700&family=Segoe+UI&display=swap" rel="stylesheet">
     <style>
-      /* Remove all custom styling that creates the document area */
+      /* Ensure proper styling for Word add-in */
       body {
         margin: 0;
         padding: 0;
         background: transparent;
+        font-family: 'Segoe UI', sans-serif;
+        color: #333;
       }
       
       #root {
         width: 100%;
         height: 100%;
         background: transparent;
+      }
+      
+      /* Style for the add-in container */
+      .add-in-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      
+      /* Header styling */
+      .add-in-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e1e1e1;
+        background: #f5f5f5;
+        font-weight: 600;
+        font-size: 18px;
+        color: #222;
+      }
+      
+      /* Button styling */
+      .analyze-button {
+        width: 100%;
+        padding: 12px 16px;
+        margin: 16px 16px 0 16px;
+        background: #0078d4;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      
+      .analyze-button:hover {
+        background: #005a9e;
+      }
+      
+      /* Section styling */
+      .section {
+        padding: 16px;
+        border-bottom: 1px solid #e1e1e1;
+        background: white;
+        margin: 16px 16px 0 16px;
+      }
+      
+      .section-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+      
+      .section-content {
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      
+      /* Info icon styling */
+      .info-icon {
+        width: 24px;
+        height: 24px;
+        border: 2px solid #0078d4;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #0078d4;
+        font-weight: bold;
+        margin-right: 8px;
+      }
+      
+      /* Learning System section */
+      .learning-system {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 16px;
+        background: #f5f5f5;
+        border: 1px solid #e1e1e1;
+        border-radius: 4px;
+        margin: 8px 16px 0 16px;
+      }
+      
+      .learning-system-label {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      
+      .learning-system-count {
+        background: #0078d4;
+        color: white;
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      
+      /* Ignored Words section */
+      .ignored-words {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 16px;
+        background: #f5f5f5;
+        border: 1px solid #e1e1e1;
+        border-radius: 4px;
+        margin: 8px 16px 0 16px;
+      }
+      
+      .ignored-words-label {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      
+      .ignored-words-count {
+        background: #0078d4;
+        color: white;
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 12px;
+        font-weight: 600;
       }
     </style>
   </head>
