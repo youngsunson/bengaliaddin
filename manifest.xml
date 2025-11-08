@@ -3,7 +3,7 @@
            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
            xsi:type="TaskPaneApp">
 
-  <Id>8f67f3cb-2c01-4bc3-bengali-spell-checker</Id>
+  <Id>8f67f3cb-2c01-4bc3-9f01-0a8a7e0f5c2d</Id>
   <Version>1.0.0.0</Version>
   <ProviderName>Himadri Biswas</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
