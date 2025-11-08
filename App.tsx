@@ -7,10 +7,11 @@ import type { SpellError, SuggestionPopupState, AIResponse, SpellCheckOptions } 
 import { GoogleGenAI, Type } from "@google/genai";
 import { learningSystem } from './learning';
 import { getWordDocumentText, highlightSpellingErrorsInWord, replaceWordInWord } from './WordIntegration';
+import { WordDocument } from './components/WordDocument'; // Import WordDocument
 
 const SYSTEM_INSTRUCTION = `আপনি একজন বাংলা লেখার সহকারী। একটি বাংলা নথির সম্পূর্ণ বিশ্লেষণ করুন এবং নিম্নলিখিত বিষয়গুলি প্রদান করুন:
 1. **বানান এবং ব্যাকরণ সংশোধন**, এবং
-2. **কাঠামো ও ফরম্যাটিং উন্নতি পরামর্শ**।
+2. **কাঠামো ও ফরম্যাটিং উন্নতি পরাম্শ**।
 
 নিম্নলিখিত JSON ফরম্যাটে ফলাফল প্রদান করুন:
 {
@@ -199,11 +200,12 @@ const App: React.FC = () => {
     setErrors([]);
     setAnalysisResult(null);
     setPopup(null);
+    setActiveErrorId(null); // Clear active error ID
 
     try {
       // Get the current document text from Word
       const wordText = await getWordDocumentText();
-      setDocumentText(wordText);
+      setDocumentText(wordText); // Update local state with Word's text
       
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
@@ -267,13 +269,25 @@ const App: React.FC = () => {
     // Learn from this correction
     learningSystem.learnFromCorrection(errorToFix, 'accept');
 
-    // Replace the word in the Word document
+    // --- NEW: Update the local documentText state ---
+    const updatedText = documentText.substring(0, errorToFix.position.start) +
+                        suggestion +
+                        documentText.substring(errorToFix.position.end);
+    setDocumentText(updatedText);
+
+    // Update errors list to reflect the change (optional, for UI consistency)
+    // This might involve re-running spell check on the new text or filtering out the fixed error
+    // For now, just filter it out if it matches exactly
+    const updatedErrors = errors.filter(e => e.id !== errorId);
+    setErrors(updatedErrors);
+
+    // Sync the change back to the real Word document
     await replaceWordInWord(errorToFix.incorrectWord, suggestion);
-    
-    // Update our local state
+
+    // Close the popup and clear active ID
     setPopup(null);
     setActiveErrorId(null);
-  }, [errors]);
+  }, [documentText, errors]);
 
   const handleDismissError = useCallback((errorId: string) => {
     const errorToDismiss = errors.find(e => e.id === errorId);
@@ -299,17 +313,36 @@ const App: React.FC = () => {
     setActiveErrorId(null);
   }, [history, spellCheckOptions]);
 
+  // --- NEW: Handler for text changes in the custom editor ---
+  const handleTextChange = useCallback((newText: string) => {
+    // Optionally, you could run spell check again here when the user types
+    // For now, just update the state
+    setDocumentText(newText);
+  }, []);
+
+  // --- NEW: Handler for clicking a word to show popup ---
+  const handleWordClick = useCallback((state: SuggestionPopupState) => {
+    setPopup(state);
+    setActiveErrorId(state.error.id);
+  }, []);
+
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
       <div className="w-full max-w-7xl bg-white dark:bg-gray-900 shadow-2xl rounded-lg flex flex-col h-[calc(100vh-4rem)]">
         <Ribbon onUndo={handleUndo} canUndo={history.length > 0} onSettingsClick={() => setIsSettingsOpen(true)} />
         <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
-          {/* Main content area - this will be empty as we're using Word's native document */}
+          {/* Main content area - now uses WordDocument component */}
           <main className="flex-grow p-4 md:p-8 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
-            {/* This area will be empty as we're using Word's native document */}
-            <div className="text-center text-gray-500 mt-8">
-              <p>Word document content will appear here</p>
-            </div>
+            <WordDocument
+              text={documentText}
+              onTextChange={handleTextChange}
+              errors={activeErrors}
+              popup={popup}
+              activeErrorId={activeErrorId}
+              onWordClick={handleWordClick}
+              onAcceptSuggestion={handleAcceptSuggestion}
+              onDismissError={handleDismissError}
+            />
           </main>
           <aside className="w-full md:w-80 lg:w-96 bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="add-in-container">
