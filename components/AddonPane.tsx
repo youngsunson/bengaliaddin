@@ -4,6 +4,11 @@ import type { SpellError, AIResponse } from '../types';
 import { ErrorCard } from './ErrorCard';
 import { learningSystem } from '../learning'; // Add this import
 
+// Import SettingsIcon directly (we’ll use it instead of Ribbon)
+const SettingsIcon: React.FC<{className?: string}> = ({className}) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+);
+
 interface AddonPaneProps {
   errors: SpellError[];
   onAcceptSuggestion: (errorId: string, suggestion: string) => void;
@@ -102,12 +107,37 @@ export const AddonPane: React.FC<AddonPaneProps> = ({ errors, onAcceptSuggestion
     const storedCorrectionsCount = learningSystem.userPreferences.storedCorrections.length;
     const userAcceptedWordsCount = learningSystem.userPreferences.userAcceptedWords.length;
     
+    // State to control settings panel visibility
+    const [showSettings, setShowSettings] = useState(false);
+
+    // Function to toggle settings panel
+    const toggleSettings = () => {
+        setShowSettings(!showSettings);
+    };
+
     return (
         <div className="h-full flex flex-col">
-            <header className="p-4 border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
+            {/* Header with only the gear icon */}
+            <header className="p-4 border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-center">
                 <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Bengali Writing Assistant</h1>
+                <button 
+                    onClick={toggleSettings} 
+                    className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+                >
+                    <SettingsIcon className="w-5 h-5" />
+                </button>
             </header>
             
+            {/* Settings Panel (conditionally rendered) */}
+            {showSettings && (
+                <div className="p-4 bg-gray-100 dark:bg-gray-800/50 border-b border-gray-300 dark:border-gray-700">
+                    <h2 className="text-md font-semibold text-gray-700 dark:text-gray-200 mb-2">Settings</h2>
+                    {/* Add your settings options here */}
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Settings content goes here...</p>
+                </div>
+            )}
+
+            {/* Main Content */}
             <div className="flex-grow overflow-y-auto bg-gray-100 dark:bg-gray-800/50 p-4 space-y-4">
                  <button 
                     onClick={onRunAnalysis}
