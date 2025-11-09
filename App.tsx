@@ -9,19 +9,19 @@ import { INITIAL_DOCUMENT_TEXT } from './constants';
 import { GoogleGenAI, Type } from "@google/genai";
 import { learningSystem } from './learning';
 
-const SYSTEM_INSTRUCTION = `You are an intelligent Bengali writing assistant integrated with Microsoft Word. 
-Your job is to analyze the full text of a Bengali document and provide both:
-1. **Spelling and grammar corrections**, and
-2. **Content and formatting improvement suggestions**.
+// ✅ UPDATED: System instruction in Bengali
+const SYSTEM_INSTRUCTION = `আপনি একজন বাংলা লেখার সহকারী। একটি বাংলা নথির সম্পূর্ণ বিশ্লেষণ করুন এবং নিম্নলিখিত বিষয়গুলি প্রদান করুন:
+1. **বানান এবং ব্যাকরণ সংশোধন**, এবং
+2. **কাঠামো ও ফরম্যাটিং উন্নতি পরামর্শ**।
 
-Return results in this JSON format:
+নিম্নলিখিত JSON ফরম্যাটে ফলাফল প্রদান করুন:
 {
   "spelling_corrections": [
     {"word": "ভুলশব্দ", "suggestion": "সঠিকশব্দ", "confidence": 0.95, "reason": "Common misspelling"}
   ],
-  "missing_elements": ["Subject not mentioned"],
-  "formatting_suggestions": ["Add proper paragraph spacing"],
-  "general_feedback": "Your letter is well written but missing Subject and Signature sections."
+  "missing_elements": ["বিষয় উল্লেখ করা হয়নি"],
+  "formatting_suggestions": ["উপযুক্ত প্যারাগ্রাফ স্পেসিং যোগ করুন"],
+  "general_feedback": "আপনার চিঠি ভালো লেখা হয়েছে কিন্তু বিষয় এবং স্বাক্ষর অনুপস্থিত।"
 }`;
 
 const RESPONSE_SCHEMA = {
@@ -205,18 +205,24 @@ const App: React.FC = () => {
     try {
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
-      const spellingPrompt = `
-      Please analyze this Bengali document and focus ONLY on spelling errors:
+      // ✅ UPDATED: Comprehensive prompt in Bengali
+      const comprehensivePrompt = `
+      অনুগ্রহ করে এই বাংলা নথিটি সম্পূর্ণভাবে বিশ্লেষণ করুন:
 
       "${documentText}"
 
-      Identify ALL misspelled Bengali words.
-      Return your response in the exact JSON format specified in the system instruction.
+      নিম্নলিখিত বিষয়গুলি সরবরাহ করুন:
+      1. বানান এবং ব্যাকরণ সংশোধন
+      2. অনুপস্থিত নথি উপাদান (যেমন বিষয়, তারিখ, স্বাক্ষর ইত্যাদি)
+      3. ফরম্যাটিং পরামর্শ (স্পেসিং, এলাইনমেন্ট ইত্যাদি)
+      4. নথি সম্পর্কে সাধারণ প্রতিক্রিয়া
+
+      সিস্টেম নির্দেশিকায় উল্লিখিত সঠিক JSON ফরম্যাটে আপনার প্রতিক্রিয়া প্রদান করুন।
       `;
 
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: [{ text: spellingPrompt }],
+        contents: [{ text: comprehensivePrompt }],
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: "application/json",
