@@ -323,6 +323,8 @@ const App: React.FC = () => {
               onRunAnalysis={handleRunAnalysis}
               ignoredWords={ignoredWords}
               onIgnoredWordsChange={updateIgnoredWords}
+              // ADD THIS PROP
+              onSettingsClick={() => setIsSettingsOpen(true)}
             />
           </aside>
         </div>
