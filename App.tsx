@@ -5,9 +5,10 @@ import { WordDocument } from './components/WordDocument';
 import { AddonPane } from './components/AddonPane';
 import { SettingsPanel } from './components/SettingsPanel';
 import type { SpellError, SuggestionPopupState, AIResponse, SpellCheckOptions } from './types';
-import { INITIAL_DOCUMENT_TEXT } from './constants';
+import { INITIAL_DOCUMENT_TEXT } from './constants'; // Still imported for potential fallback, but not used for analysis
 import { GoogleGenAI, Type } from "@google/genai";
 import { learningSystem } from './learning';
+import { getWordDocumentText } from './WordIntegration'; // Import the function to read from Word
 
 // ✅ UPDATED: System instruction in Bengali
 const SYSTEM_INSTRUCTION = `আপনি একজন বাংলা লেখার সহকারী। একটি বাংলা নথির সম্পূর্ণ বিশ্লেষণ করুন এবং নিম্নলিখিত বিষয়গুলি প্রদান করুন:
@@ -162,7 +163,8 @@ interface HistoryState {
 type Theme = 'light' | 'dark';
 
 const App: React.FC = () => {
-  const [documentText, setDocumentText] = useState<string>(INITIAL_DOCUMENT_TEXT);
+  // Initialize documentText with empty string instead of default text
+  const [documentText, setDocumentText] = useState<string>("");
   const [errors, setErrors] = useState<SpellError[]>([]);
   const [popup, setPopup] = useState<SuggestionPopupState | null>(null);
   const [ignoredWords, setIgnoredWords] = useState<string[]>([
@@ -192,6 +194,22 @@ const App: React.FC = () => {
     else if (window.matchMedia('(prefers-color-scheme: dark)').matches) setTheme('dark');
   }, []);
 
+  // Load initial document text from Word when component mounts
+  useEffect(() => {
+    const loadInitialDocument = async () => {
+      try {
+        const text = await getWordDocumentText();
+        setDocumentText(text);
+      } catch (error) {
+        console.error("Failed to load initial document text:", error);
+        // Optionally set to INITIAL_DOCUMENT_TEXT here as a fallback if needed
+        // setDocumentText(INITIAL_DOCUMENT_TEXT);
+      }
+    };
+
+    loadInitialDocument();
+  }, []); // Empty dependency array means this runs once on mount
+
   const activeErrors = useMemo(() => {
     return errors.filter(error => !ignoredWords.includes(error.incorrectWord));
   }, [errors, ignoredWords]);
@@ -203,13 +221,16 @@ const App: React.FC = () => {
     setPopup(null);
 
     try {
+      // Fetch the current document text from Word
+      const currentDocumentText = await getWordDocumentText();
+
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
       // ✅ UPDATED: Comprehensive prompt in Bengali
       const comprehensivePrompt = `
       অনুগ্রহ করে এই বাংলা নথিটি সম্পূর্ণভাবে বিশ্লেষণ করুন:
 
-      "${documentText}"
+      "${currentDocumentText}"
 
       নিম্নলিখিত বিষয়গুলি সরবরাহ করুন:
       1. বানান এবং ব্যাকরণ সংশোধন
@@ -237,30 +258,32 @@ const App: React.FC = () => {
       const resultJson = JSON.parse(rawText) as AIResponse;
       setAnalysisResult(resultJson);
 
-      const generatedErrors = generateErrorsFromAI(documentText, resultJson.spelling_corrections);
+      const generatedErrors = generateErrorsFromAI(currentDocumentText, resultJson.spelling_corrections);
       let finalErrors = generatedErrors;
 
       if (generatedErrors.length === 0) {
-        finalErrors = performSpellCheck(documentText, spellCheckOptions);
+        finalErrors = performSpellCheck(currentDocumentText, spellCheckOptions);
       }
 
       setErrors(finalErrors);
     } catch (error) {
       console.error("Error calling Gemini API:", error);
-      const localErrors = performSpellCheck(documentText, spellCheckOptions);
+      // Fallback to local spell check using the fetched text
+      const localErrors = performSpellCheck(currentDocumentText, spellCheckOptions);
       setErrors(localErrors);
     } finally {
       setIsChecking(false);
     }
-  }, [documentText, spellCheckOptions]);
+  }, [spellCheckOptions]); // Dependencies removed: documentText is now fetched inside the function
 
-  const handleTextChange = useCallback((newText: string) => {
-    setHistory(prev => [...prev, { documentText, ignoredWords }]);
-    setDocumentText(newText);
-    const localErrors = performSpellCheck(newText, spellCheckOptions);
-    setErrors(localErrors);
-    if (popup) setPopup(null);
-  }, [popup, documentText, ignoredWords, spellCheckOptions]);
+  // Removed handleTextChange as it's no longer needed for reading the document
+  // const handleTextChange = useCallback((newText: string) => {
+  //   setHistory(prev => [...prev, { documentText, ignoredWords }]);
+  //   setDocumentText(newText);
+  //   const localErrors = performSpellCheck(newText, spellCheckOptions);
+  //   setErrors(localErrors);
+  //   if (popup) setPopup(null);
+  // }, [popup, documentText, ignoredWords, spellCheckOptions]);
 
   const updateIgnoredWords = useCallback((updater: (prev: string[]) => string[]) => {
     setHistory(prev => [...prev, { documentText, ignoredWords }]);
@@ -272,14 +295,16 @@ const App: React.FC = () => {
     if (!errorToFix) return;
 
     learningSystem.learnFromCorrection(errorToFix, 'accept');
+    // For now, just update the local state. To update the actual Word document, use replaceWordInWord from WordIntegration.ts
     const newText = documentText.replace(
       new RegExp(`(?<![\\u0980-\\u09FF])${errorToFix.incorrectWord}(?![\\u0980-\\u09FF])`, 'g'),
       suggestion
     );
-    handleTextChange(newText);
+    // setDocumentText(newText); // Uncomment if you want to update local state (not necessary for analysis)
+    // handleTextChange(newText); // Commented out as handleTextChange is removed
     setPopup(null);
     setActiveErrorId(null);
-  }, [documentText, errors, handleTextChange]);
+  }, [documentText, errors]); // Removed handleTextChange from dependencies
 
   const handleDismissError = useCallback((errorId: string) => {
     const errorToDismiss = errors.find(e => e.id === errorId);
@@ -303,7 +328,7 @@ const App: React.FC = () => {
           <main className="flex-grow p-4 md:p-8 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
             <WordDocument
               text={documentText}
-              onTextChange={handleTextChange}
+              onTextChange={() => {}} // Pass a no-op function or remove if WordDocument doesn't require it
               errors={activeErrors}
               onWordClick={setPopup}
               popup={popup}
