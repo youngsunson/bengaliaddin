@@ -19,6 +19,8 @@ interface AddonPaneProps {
   onRunAnalysis: () => void;
   ignoredWords: string[];
   onIgnoredWordsChange: (updater: (prev: string[]) => string[]) => void;
+  // ADD THIS NEW PROP
+  onSettingsClick: () => void;
 }
 
 const InfoIcon: React.FC<{className?: string}> = ({className}) => (
@@ -102,44 +104,31 @@ const IgnoredWordsManager: React.FC<{words: string[], onChange: (updater: (prev:
     );
 };
 
-export const AddonPane: React.FC<AddonPaneProps> = ({ errors, onAcceptSuggestion, onDismissError, onCardHover, isChecking, analysisResult, onRunAnalysis, ignoredWords, onIgnoredWordsChange }) => {
+export const AddonPane: React.FC<AddonPaneProps> = ({ errors, onAcceptSuggestion, onDismissError, onCardHover, isChecking, analysisResult, onRunAnalysis, ignoredWords, onIgnoredWordsChange, onSettingsClick }) => { // <-- Add onSettingsClick to destructuring
     // Get learning statistics
     const storedCorrectionsCount = learningSystem.userPreferences.storedCorrections.length;
     const userAcceptedWordsCount = learningSystem.userPreferences.userAcceptedWords.length;
-    
-    // State to control settings panel visibility
-    const [showSettings, setShowSettings] = useState(false);
 
-    // Function to toggle settings panel
-    const toggleSettings = () => {
-        setShowSettings(!showSettings);
-    };
+    // Remove local state and function for settings panel if they existed
+    // const [showSettings, setShowSettings] = useState(false); // <-- Remove if present
+    // const toggleSettings = () => { setShowSettings(!showSettings); }; // <-- Remove if present
 
     return (
         <div className="h-full flex flex-col">
             {/* Header with only the gear icon */}
             <header className="p-4 border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 flex justify-between items-center">
                 <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Bengali Writing Assistant</h1>
-                <button 
-                    onClick={toggleSettings} 
+                <button
+                    onClick={onSettingsClick} // <-- Call the function passed from App.tsx
                     className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
                 >
                     <SettingsIcon className="w-5 h-5" />
                 </button>
             </header>
-            
-            {/* Settings Panel (conditionally rendered) */}
-            {showSettings && (
-                <div className="p-4 bg-gray-100 dark:bg-gray-800/50 border-b border-gray-300 dark:border-gray-700">
-                    <h2 className="text-md font-semibold text-gray-700 dark:text-gray-200 mb-2">Settings</h2>
-                    {/* Add your settings options here */}
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Settings content goes here...</p>
-                </div>
-            )}
 
             {/* Main Content */}
             <div className="flex-grow overflow-y-auto bg-gray-100 dark:bg-gray-800/50 p-4 space-y-4">
-                 <button 
+                 <button
                     onClick={onRunAnalysis}
                     disabled={isChecking}
                     className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
@@ -162,23 +151,23 @@ export const AddonPane: React.FC<AddonPaneProps> = ({ errors, onAcceptSuggestion
                         <p className="text-sm">Click the button above to get feedback on your document.</p>
                     </div>
                 )}
-                
+
                 {analysisResult && (
                     <div className="bg-blue-50 dark:bg-blue-900/40 border-l-4 border-blue-400 dark:border-blue-500 text-blue-800 dark:text-blue-200 p-4 rounded-r-lg" role="alert">
                         <p className="font-bold">General Feedback</p>
                         <p>{analysisResult.general_feedback}</p>
                     </div>
                 )}
-                
+
                 {(analysisResult || errors.length > 0) && (
                     <>
                         <CollapsibleSection title="Spelling Corrections" count={errors.length} icon={<SpellCheckIcon className="w-5 h-5"/>} defaultOpen={errors.length > 0}>
                             {errors.length > 0 ? (
                                 <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
                                     {errors.map(error => (
-                                        <ErrorCard 
-                                            key={error.id} 
-                                            error={error} 
+                                        <ErrorCard
+                                            key={error.id}
+                                            error={error}
                                             onAcceptSuggestion={onAcceptSuggestion}
                                             onDismissError={onDismissError}
                                             onHover={onCardHover}
@@ -219,9 +208,9 @@ export const AddonPane: React.FC<AddonPaneProps> = ({ errors, onAcceptSuggestion
                                 <p className="font-semibold text-green-900 dark:text-green-100">{userAcceptedWordsCount}</p>
                             </div>
                         </div>
-                        
+
                         <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                            <button 
+                            <button
                                 onClick={() => learningSystem.saveToStorage()}
                                 className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded hover:bg-gray-300 dark:hover:bg-gray-600 text-sm"
                             >
