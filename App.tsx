@@ -1,8 +1,8 @@
 // App.tsx
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
+// import { Ribbon } from './components/Ribbon'; // <-- REMOVED
 import { WordDocument } from './components/WordDocument';
 import { AddonPane } from './components/AddonPane';
-import { Ribbon } from './components/Ribbon';
 import { SettingsPanel } from './components/SettingsPanel';
 import type { SpellError, SuggestionPopupState, AIResponse, SpellCheckOptions } from './types';
 import { INITIAL_DOCUMENT_TEXT } from './constants';
@@ -169,7 +169,7 @@ const App: React.FC = () => {
     ...learningSystem.userPreferences.ignoreWords
   ]); // ✅ FIXED: Removed default ignored test words
   const [activeErrorId, setActiveErrorId] = useState<string | null>(null);
-  const [history, setHistory] = useState<HistoryState[]>([]);
+  const [history, setHistory] = useState<HistoryState[]>([]); // <-- Kept history state for potential undo logic elsewhere if needed
   const [isChecking, setIsChecking] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AIResponse | null>(null);
   const [theme, setTheme] = useState<Theme>('light');
@@ -290,22 +290,15 @@ const App: React.FC = () => {
     setActiveErrorId(null);
   }, [errors, updateIgnoredWords]);
 
-  const handleUndo = useCallback(() => {
-    if (history.length === 0) return;
-    const previousState = history[history.length - 1];
-    setHistory(history.slice(0, -1));
-    setDocumentText(previousState.documentText);
-    setIgnoredWords(previousState.ignoredWords);
-    const localErrors = performSpellCheck(previousState.documentText, spellCheckOptions);
-    setErrors(localErrors);
-    setPopup(null);
-    setActiveErrorId(null);
-  }, [history, spellCheckOptions]);
+  // REMOVED handleUndo function as it was tied to the ribbon
+
+  // REMOVED canUndo calculation as it was tied to the ribbon
+  // const canUndo = history.length > 0;
 
   return (
     <div className="min-h-screen p-4 md:p-8 flex flex-col items-center">
       <div className="w-full max-w-7xl bg-white dark:bg-gray-900 shadow-2xl rounded-lg flex flex-col h-[calc(100vh-4rem)]">
-        <Ribbon onUndo={handleUndo} canUndo={history.length > 0} onSettingsClick={() => setIsSettingsOpen(true)} />
+        {/* Ribbon REMOVED */}
         <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
           <main className="flex-grow p-4 md:p-8 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
             <WordDocument
@@ -334,7 +327,7 @@ const App: React.FC = () => {
           </aside>
         </div>
       </div>
-      <SettingsPanel 
+      <SettingsPanel
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         theme={theme}
