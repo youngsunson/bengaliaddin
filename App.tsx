@@ -223,6 +223,8 @@ const App: React.FC = () => {
     try {
       // Fetch the current document text from Word
       const currentDocumentText = await getWordDocumentText();
+      // Update the state to reflect the current document text
+      setDocumentText(currentDocumentText);
 
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
@@ -327,7 +329,7 @@ const App: React.FC = () => {
         <div className="flex-grow flex flex-col md:flex-row overflow-hidden">
           <main className="flex-grow p-4 md:p-8 overflow-y-auto bg-gray-50 dark:bg-gray-900/50">
             <WordDocument
-              text={documentText}
+              text={documentText} // This now reflects the text fetched from Word via setDocumentText
               onTextChange={() => {}} // Pass a no-op function or remove if WordDocument doesn't require it
               errors={activeErrors}
               onWordClick={setPopup}
