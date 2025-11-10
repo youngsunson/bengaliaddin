@@ -220,25 +220,12 @@ const App: React.FC = () => {
     setAnalysisResult(null);
     setPopup(null);
 
-    let currentDocumentText = ""; // Initialize the variable
-
     try {
-      // Fetch the current document text from Word - OUTSIDE the main API try block
-      currentDocumentText = await getWordDocumentText();
+      // Fetch the current document text from Word
+      const currentDocumentText = await getWordDocumentText();
       // Update the state to reflect the current document text
       setDocumentText(currentDocumentText);
-    } catch (fetchError) {
-      console.error("Error fetching document text from Word:", fetchError);
-      // If we cannot get the text, maybe we should stop here or use a fallback.
-      // For now, we'll proceed with the empty string and let spell check handle it.
-      // A better UX might be to show an error message and stop.
-      if (currentDocumentText === "") {
-         console.error("Could not fetch document text and no fallback state available.");
-      }
-    }
 
-    try {
-      // Now perform the API analysis and spell check with the obtained (or potentially empty/fallback) text
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
       // ✅ UPDATED: Comprehensive prompt in Bengali
@@ -281,9 +268,9 @@ const App: React.FC = () => {
       }
 
       setErrors(finalErrors);
-    } catch (apiError) {
-      console.error("Error calling Gemini API or processing results:", apiError);
-      // Fallback to local spell check using the fetched text (which might be empty or a fallback)
+    } catch (error) {
+      console.error("Error calling Gemini API:", error);
+      // Fallback to local spell check using the fetched text
       const localErrors = performSpellCheck(currentDocumentText, spellCheckOptions);
       setErrors(localErrors);
     } finally {
