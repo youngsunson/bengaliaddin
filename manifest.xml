@@ -11,17 +11,14 @@
   <DisplayName DefaultValue="Bengali Spell Checker" />
   <Description DefaultValue="AI-powered Bengali spell check add-in for Microsoft Word." />
 
-  <!-- ✅ Correct case-sensitive icon path -->
   <IconUrl DefaultValue="https://youngsunson.github.io/bengaliaddin/Assets/icons/icon-128.png"/>
 
   <Hosts>
-    <!-- ✅ Correct host -->
     <Host Name="Word"/>
   </Hosts>
 
   <DefaultSettings>
-    <!-- ✅ Correct UI Page (Your app UI is index.html) -->
-    <SourceLocation DefaultValue="https://youngsunson.github.io/bengaliaddin/index.html"/>
+       <SourceLocation DefaultValue="https://youngsunson.github.io/bengaliaddin/index.html"/>
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
