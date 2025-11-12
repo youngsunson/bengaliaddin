@@ -1,10 +1,11 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// https://vitejs.dev/config/
+const isGitHubPages = process.env.GITHUB_ACTIONS === 'true';
+
 export default defineConfig({
   plugins: [react()],
-  base: '/', // ✅ crucial for Netlify root deployment
+  base: isGitHubPages ? '/bengaliaddin/' : '/', // ✅ automatic base path
   define: {
     'process.env': process.env,
   },
